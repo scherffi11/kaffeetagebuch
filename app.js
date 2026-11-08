@@ -1,4 +1,4 @@
-// Kaffeetagebuch 2.0: gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.1): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
 
@@ -91,12 +91,13 @@ function initials(name) {
 }
 const avatar = (id, size = 28) => `<span class="av" style="--h:${hash(id) % 360};--s:${size}px" title="${esc(person(id).name)}">${esc(initials(person(id).name))}</span>`;
 const beanColor = b => b.color || BAG_COLORS[hash(b.id) % BAG_COLORS.length];
-function beanPh(b, cls = '') {
+function beanInner(b) {
   const url = photoURL(b);
-  if (url) return `<div class="ph ${cls}"><img src="${esc(url)}" alt="Foto der Packung ${esc(b.name)}" loading="lazy"></div>`;
+  if (url) return `<img src="${esc(url)}" alt="Foto der Packung ${esc(b.name)}" loading="lazy">`;
   const c = beanColor(b);
-  return `<div class="ph ${cls}"><div class="blank${isLight(c) ? ' light' : ''}" style="--c:${c}"><small>${esc(b.roaster)}</small><b>${esc(b.name)}</b></div></div>`;
+  return `<span class="blank${isLight(c) ? ' light' : ''}" style="--c:${c}"><small>${esc(b.roaster)}</small><b>${esc(b.name)}</b></span>`;
 }
+const beanPh = (b, cls = '') => `<div class="ph ${cls}">${beanInner(b)}</div>`;
 const beanThumb = (b, cls = 'thumb') => {
   const url = photoURL(b);
   return url ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy">` : `<span class="${cls} blankt" style="--c:${beanColor(b)};display:block"></span>`;
@@ -198,7 +199,7 @@ $('#scrim').addEventListener('click', closeLayer);
 /* ================= Anmeldung ================= */
 const gateMsg = m => { $('#gateMsg').textContent = m || ''; };
 function showGate(step) {
-  $('#boot').classList.add('gone');
+  bootDone();
   $('#app').hidden = true; $('#gate').hidden = false;
   ['fEmail', 'fCode', 'fName'].forEach(id => { $('#' + id).hidden = id !== step; });
   gateMsg('');
@@ -251,9 +252,9 @@ async function enter() {
     if (!S.me || !S.me.name) { showGate('fName'); return; }
     $('#gate').hidden = true; $('#app').hidden = false;
     renderAll(); renderMe();
-    $('#boot').classList.add('gone');
+    bootDone();
   } catch (e) {
-    $('#boot').classList.add('gone');
+    bootDone();
     showGate('fEmail'); gateMsg('Verbindung zur Datenbank fehlgeschlagen. Bitte neu laden.');
   } finally { entering = false; }
 }
@@ -285,12 +286,15 @@ function renderGallery() {
   }
   if (!list.length) { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><p>${S.gFilter === 'open' ? 'Du hast schon alles bewertet.' : 'Nichts in diesem Filter.'}</p></div>`; return; }
   $('#grid').innerHTML = list.map(({ b, a }, i) => `
-    <button class="tile" data-act="bean" data-id="${b.id}" style="animation-delay:${Math.min(i, 12) * 30}ms">
-      ${beanPh(b)}
-      <span class="t-name">${esc(b.name)}</span>
-      <span class="t-sub">${esc(b.roaster || (b.kind === 'super' ? 'Supermarkt' : 'Röster'))}${a.per100 ? ' · ' + eur(a.per100) + '/100 g' : ''}</span>
-      <span class="t-meta">${a.avg ? `<span class="r">${starsHTML(a.avg, 12)}<span class="num">${de(a.avg)}</span></span>` : '<span class="none">noch ohne Wertung</span>'}
-        <span class="avs">${a.persons.slice(0, 4).map(p => avatar(p.u, 22)).join('')}</span></span>
+    <button class="tile" data-act="bean" data-id="${b.id}" style="animation-delay:${Math.min(i, 12) * 35}ms" aria-label="${esc(b.name)}${b.price ? ', ' + eur(b.price) : ''}">
+      <span class="ph" style="display:block">${beanInner(b)}
+        <span class="ov"><span class="kind-tag${b.kind === 'super' ? ' super' : ''}">${b.kind === 'super' ? 'Supermarkt' : 'Röster'}</span><span class="avs">${a.persons.slice(0, 3).map(p => avatar(p.u, 24)).join('')}</span></span></span>
+      <span class="t-body">
+        <span class="t-name">${esc(b.name)}</span>
+        <span class="t-sub">${esc(b.roaster || b.place || '')}</span>
+        <span class="t-rate">${a.avg ? `${starsHTML(a.avg, 13)}<span class="num">${de(a.avg)}</span><span class="cnt">(${a.bs.length})</span>` : '<span class="cnt">Noch keine Bewertung</span>'}</span>
+        <span class="t-price">${b.price ? `<b>${eur(b.price)}</b>` : '<b>–</b>'}${a.per100 ? `<small>${eur(a.per100)}/100 g</small>` : b.weight ? `<small>${b.weight} g</small>` : ''}</span>
+      </span>
     </button>`).join('');
 }
 $('#gFilter').addEventListener('click', e => { const c = e.target.closest('[data-gf]'); if (c) { S.gFilter = c.dataset.gf; renderGallery(); buzz(4); } });
@@ -343,6 +347,7 @@ function renderBeanPanel(id) {
       <p class="kicker">${b.kind === 'super' ? 'Supermarkt' : 'Rösterei'}${b.roaster ? ' · ' + esc(b.roaster) : ''}</p>
       <h1 class="d-title">${esc(b.name)}</h1>
       ${b.origin ? `<p class="d-sub">${esc(b.origin)}</p>` : ''}
+      ${b.price ? `<p class="d-price"><b>${eur(b.price)}</b><span>${b.weight ? (b.weight >= 1000 ? de(b.weight / 1000, b.weight % 1000 ? 1 : 0) + ' kg' : b.weight + ' g') : ''}${a.per100 ? ' · ' + eur(a.per100) + ' je 100 g' : ''}${b.place ? ' · bei ' + esc(b.place) : ''}</span></p>` : ''}
       <div class="score">
         ${a.avg ? `<span class="big">${de(a.avg)}</span><div>${starsHTML(a.avg)}<p>${a.bs.length} ${a.bs.length === 1 ? 'Bewertung' : 'Bewertungen'} von ${a.ratedP.length} ${a.ratedP.length === 1 ? 'Person' : 'Personen'}</p></div>`
         : `<div><b style="font-weight:500">Noch nicht bewertet</b><p>Sei die erste Person, die diese Bohne probiert.</p></div>`}
@@ -897,7 +902,7 @@ function renderMe() {
       <label class="btn block" style="cursor:pointer">Sicherung auswählen<input type="file" accept="application/json,.json" id="importFile" class="vh"></label>
       <p class="fine" id="importMsg" style="margin-top:10px"></p></div>
     <button class="btn block" id="logout">Abmelden</button>
-    <p class="foot">Kaffeetagebuch · Version ${VERSION}</p>`;
+    <p class="foot">Kaffee mit Freunden · Version ${VERSION}</p>`;
 }
 $('#meBody').addEventListener('change', async e => {
   const t = e.target;
@@ -944,7 +949,7 @@ async function importBackup(input) {
   const msg = $('#importMsg');
   let n;
   try { n = JSON.parse(await f.text()); if (!Array.isArray(n.coffees) || !Array.isArray(n.beans)) throw 0; }
-  catch (er) { msg.textContent = 'Die Datei ist keine Sicherung aus dem Kaffeetagebuch.'; return; }
+  catch (er) { msg.textContent = 'Die Datei ist keine Sicherung aus dem alten Kaffeetagebuch.'; return; }
   const again = settings().imported ? ' Achtung: Du hast schon einmal importiert, dann gibt es alles doppelt.' : '';
   if (!confirm(`Übernommen werden ${n.beans.length} Packungen und ${n.coffees.length} Kaffees, sichtbar für alle.${again} Weiter?`)) return;
   msg.textContent = 'Übernehme Daten …';
@@ -1024,6 +1029,72 @@ $('#fab').onclick = () => { openLayer($('#actSheet')); buzz(6); };
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.me && Date.now() - S.loadedAt > 20000) refresh();
 });
+
+/* ================= Startbild: die Mühle ================= */
+let bootDone;
+const ready = new Promise(r => { bootDone = r; });
+function runSplash(ready) {
+  const sp = $('#splash'), q = id => sp.querySelector('#' + id);
+  const arm = q('arm'), knob = q('knob'), crank = q('crank'), cBack = q('crankBack'), cFront = q('crankFront');
+  const body = q('mBody'), beansG = q('mBeans'), dTop = q('dTop'), dSide = q('dSide'), dFront = q('dFront'), crumbs = q('dCrumbs'), aroma = q('aroma');
+  // Bohnen im Trichter, die beim Mahlen kreisen und weniger werden
+  const BE = Array.from({ length: 13 }, (_, i) => ({ a: i * 2.4, r: 6 + (i * 37) % 29, rot: (i * 47) % 180 }));
+  beansG.innerHTML = BE.map(() => '<ellipse rx="4.2" ry="2.7"/>').join('');
+  const beanEls = [...beansG.children];
+  crumbs.innerHTML = Array.from({ length: 28 }, (_, i) => `<circle r="${(.6 + (i % 3) * .35).toFixed(2)}"/>`).join('');
+  const crumbEls = [...crumbs.children].map((el, i) => ({ el, u: ((i * 53) % 97) / 97, v: ((i * 31) % 89) / 89 }));
+  let behind = null;
+  const setCrank = a => {
+    const x = 122 + 50 * Math.cos(a), y = 86 + 11 * Math.sin(a);
+    arm.setAttribute('d', `M122 86Q${(122 + 28 * Math.cos(a)).toFixed(1)} ${(79 + 6 * Math.sin(a)).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`);
+    knob.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(.9 + .05 * (Math.sin(a) + 1)).toFixed(3)})`);
+    const b = Math.sin(a) < 0;   // Griff hinter der Achse, wenn er von uns weg zeigt
+    if (b !== behind) { behind = b; (b ? cBack : cFront).appendChild(crank); }
+  };
+  const setBeans = (a, p) => beanEls.forEach((el, i) => {
+    const B = BE[i], t = B.a + a * .35;
+    el.setAttribute('transform', `translate(${(122 + B.r * Math.cos(t)).toFixed(1)} ${(112 + B.r * .19 * Math.sin(t) + p * 3).toFixed(1)}) rotate(${(B.rot + a * 20).toFixed(0)})`);
+    el.setAttribute('opacity', clamp(1.3 - p * 1.5 + (i % 4) * .08 - (i / BE.length) * p, 0, 1).toFixed(2));
+  });
+  const setDrawer = o => {
+    const dx = -26 * o, dy = 17.5 * o;
+    dFront.setAttribute('transform', `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`);
+    dTop.setAttribute('d', `M${64 + dx} ${214 + dy}H${156 + dx}L156 214H64Z`);
+    dSide.setAttribute('d', `M${156 + dx} ${214 + dy}L156 214V256L${156 + dx} ${256 + dy}Z`);
+    crumbEls.forEach(c => { c.el.setAttribute('cx', (64 + c.u * 92 + dx * c.v).toFixed(1)); c.el.setAttribute('cy', (214 + dy * c.v).toFixed(1)); });
+  };
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const outBack = t => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
+  let loaded = false, skip = false, done = false, t0 = 0, lastRot = 0;
+  ready.then(() => { loaded = true; });
+  sp.addEventListener('click', () => { skip = true; });
+  const finish = () => {
+    if (done) return; done = true;
+    sp.classList.add('out'); $('#app').classList.remove('pre');
+    setTimeout(() => sp.remove(), 1000);
+  };
+  // Sicherheitsnetz, falls der Browser die Animation anhält
+  setTimeout(() => ready.then(finish), 6000);
+  setCrank(Math.PI / 2); setBeans(0, 0); setDrawer(0);
+  if (REDUCED) { setDrawer(1); ready.then(() => setTimeout(finish, 400)); return; }
+  const C0 = 300, C1 = 2000, D0 = 2050, D1 = 2650, END = 2950;
+  const frame = now => {
+    if (!t0) t0 = now;
+    let t = now - t0;
+    if (skip && t < END) { t0 -= END - t; t = END; }
+    const pc = clamp((t - C0) / (C1 - C0), 0, 1), turn = ease(pc) * Math.PI * 5, a = Math.PI / 2 + turn;
+    setCrank(a); setBeans(turn, pc);
+    const shake = Math.sin(pc * Math.PI);   // die Mühle ruckelt, solange schnell gekurbelt wird
+    body.setAttribute('transform', `translate(${(Math.sin(t * .11) * .7 * shake).toFixed(2)} ${(Math.cos(t * .17) * .5 * shake).toFixed(2)})`);
+    const rot = Math.floor(turn / Math.PI); if (rot !== lastRot) { lastRot = rot; buzz(3); }
+    const pd = clamp((t - D0) / (D1 - D0), 0, 1); setDrawer(pd ? outBack(pd) : 0);
+    if (pd > .35 && !aroma.classList.contains('on')) { aroma.classList.add('on'); buzz(12); }
+    if (t >= END && loaded) { finish(); return; }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+runSplash(ready);
 
 /* ================= Start ================= */
 (async () => {

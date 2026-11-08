@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kaffeetagebuch</title>
-<meta name="description" content="Gemeinsames Tagebuch für Kaffeebohnen, Rezepte und Bewertungen">
+<title>Kaffee mit Freunden</title>
+<meta name="description" content="Kaffeebohnen, Rezepte und Bewertungen, gemeinsam mit Freunden">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F4F1EC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E3E2D3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131B15" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Kaffee">
@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Karla:wght@400;500;600;700&family=Young+Serif&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <main class="gate" id="gate" hidden>
   <div class="gate-in">
     <div class="mark" aria-hidden="true">
-      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="24" cy="24" rx="12" ry="17" transform="rotate(28 24 24)"/><path d="M18.6 9.8c6 6.9-1.2 19.2 11.1 26.4"/></svg>
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="steam"><path d="M25 20c-3-4 3-6 0-10"/><path d="M32 20c-3-4 3-6 0-10"/><path d="M39 20c-3-4 3-6 0-10"/></g><path d="M15 26h32v9a14 14 0 0 1-14 14h-4a14 14 0 0 1-14-14z"/><path d="M47 29h3a5.5 5.5 0 0 1 0 11h-4"/><path d="M12 55h38"/></svg>
     </div>
-    <h1>Kaffeetagebuch</h1>
-    <p class="lede">Bohnen, Rezepte und Bewertungen. Gemeinsam mit deinen Leuten.</p>
+    <h1>Kaffee mit Freunden</h1>
+    <p class="lede">Bohnen, Rezepte und Bewertungen. Wer hat welchen Kaffee probiert, und wie fand er ihn?</p>
 
     <form id="fEmail" class="gate-form" novalidate>
       <label class="field"><span>E-Mail</span><input type="email" id="inEmail" autocomplete="email" inputmode="email" placeholder="name@beispiel.de" required></label>
@@ -55,12 +55,12 @@
 </main>
 
 <!-- App -->
-<div class="app" id="app" hidden>
+<div class="app pre" id="app" hidden>
   <div class="views">
     <section class="view on" id="v-beans" aria-label="Bohnen">
-      <header class="vhead">
-        <p class="eyebrow" id="bSub"></p>
-        <h1>Kaffeetagebuch</h1>
+      <header class="vhead brand">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g class="steam"><path d="M25 20c-3-4 3-6 0-10"/><path d="M32 20c-3-4 3-6 0-10"/><path d="M39 20c-3-4 3-6 0-10"/></g><path d="M15 26h32v9a14 14 0 0 1-14 14h-4a14 14 0 0 1-14-14z"/><path d="M47 29h3a5.5 5.5 0 0 1 0 11h-4"/><path d="M12 55h38"/></svg></span>
+        <div><h1>Kaffee mit Freunden</h1><p class="eyebrow" id="bSub"></p></div>
       </header>
       <div class="bar">
         <div class="chips" id="gFilter" role="toolbar" aria-label="Filtern"></div>
@@ -135,7 +135,67 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
-<div class="boot" id="boot" aria-hidden="true"><span></span></div>
+<!-- Startbild: Handmühle mahlt, Schublade geht auf, App kommt -->
+<div class="splash" id="splash" aria-hidden="true">
+  <svg class="leaf l1" viewBox="0 0 100 220"><path d="M50 216C16 168 2 104 26 40 35 18 45 6 50 2c5 4 15 16 24 38 24 64 10 128-24 176z"/><path class="rib" d="M50 214V14M50 60l-16-14M50 90l18-16M50 120l-20-16M50 150l20-16M50 180l-16-12"/></svg>
+  <svg class="leaf l2" viewBox="0 0 100 220"><path d="M50 216C16 168 2 104 26 40 35 18 45 6 50 2c5 4 15 16 24 38 24 64 10 128-24 176z"/><path class="rib" d="M50 214V14M50 60l-16-14M50 90l18-16M50 120l-20-16M50 150l20-16M50 180l-16-12"/></svg>
+  <svg class="leaf l3" viewBox="0 0 100 220"><path d="M50 216C16 168 2 104 26 40 35 18 45 6 50 2c5 4 15 16 24 38 24 64 10 128-24 176z"/><path class="rib" d="M50 214V14M50 60l-16-14M50 90l18-16M50 120l-20-16M50 150l20-16M50 180l-16-12"/></svg>
+  <svg class="mill" id="mill" viewBox="10 36 220 252">
+    <defs>
+      <linearGradient id="gFront" x1="0" x2="1"><stop offset="0" stop-color="#8A552E"/><stop offset=".55" stop-color="#A06839"/><stop offset="1" stop-color="#7A4724"/></linearGradient>
+      <linearGradient id="gDrawer" x1="0" x2="1"><stop offset="0" stop-color="#7E4B27"/><stop offset=".5" stop-color="#94603A"/><stop offset="1" stop-color="#6E3F1F"/></linearGradient>
+      <linearGradient id="gSide" x1="0" x2="1"><stop offset="0" stop-color="#5E381C"/><stop offset="1" stop-color="#442814"/></linearGradient>
+      <linearGradient id="gTop" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#B97E4C"/><stop offset="1" stop-color="#9E6A3D"/></linearGradient>
+      <linearGradient id="gBrass" x1="0" x2="1"><stop offset="0" stop-color="#76561F"/><stop offset=".32" stop-color="#E0BE74"/><stop offset=".58" stop-color="#B38B42"/><stop offset="1" stop-color="#6A4B1A"/></linearGradient>
+      <linearGradient id="gKnob" x1="0" x2="1"><stop offset="0" stop-color="#4E2812"/><stop offset=".42" stop-color="#A2643A"/><stop offset="1" stop-color="#47230F"/></linearGradient>
+      <radialGradient id="gShadow"><stop offset="0" stop-color="#000" stop-opacity=".5"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <clipPath id="cBowl"><ellipse cx="122" cy="112" rx="37" ry="7"/></clipPath>
+    </defs>
+    <ellipse cx="124" cy="276" rx="104" ry="15" fill="url(#gShadow)"/>
+    <g id="mBody">
+      <path d="M170 150L194 134V252L170 268Z" fill="url(#gSide)"/>
+      <path d="M50 150H170V268H50Z" fill="url(#gFront)"/>
+      <path d="M50 150L74 134H194L170 150Z" fill="url(#gTop)"/>
+      <g fill="none" stroke="#3A1F0C" stroke-opacity=".22" stroke-width="1.2">
+        <path d="M50 165C90 160 122 169 170 163"/><path d="M50 182C80 186 132 176 170 183"/><path d="M50 200C95 195 126 205 170 198"/>
+        <path d="M50 263C90 259 130 266 170 260"/><path d="M170 172L194 157M170 207L194 191M170 241L194 226"/>
+      </g>
+      <g fill="#5A3216" opacity=".55">
+        <rect x="50" y="156" width="6" height="11"/><rect x="50" y="180" width="6" height="11"/><rect x="50" y="204" width="6" height="11"/><rect x="50" y="228" width="6" height="11"/><rect x="50" y="252" width="6" height="11"/>
+        <rect x="164" y="168" width="6" height="11"/><rect x="164" y="192" width="6" height="11"/><rect x="164" y="216" width="6" height="11"/><rect x="164" y="240" width="6" height="11"/>
+      </g>
+      <path d="M50 150H170L194 134" fill="none" stroke="#D59A62" stroke-opacity=".55" stroke-width="1.2"/>
+      <path d="M170 150V268" stroke="#2E1A0B" stroke-opacity=".5" stroke-width="1"/>
+      <rect x="64" y="214" width="92" height="42" rx="2" fill="#140B05"/>
+      <g id="drawer">
+        <path id="dTop" fill="#3B2314"/>
+        <g id="dCrumbs" fill="#6E4428"></g>
+        <path id="dSide" fill="#4E2D16"/>
+        <g id="dFront">
+          <rect x="64" y="214" width="92" height="42" rx="2.5" fill="url(#gDrawer)" stroke="#4E2C13" stroke-width="1.5"/>
+          <rect x="70" y="220" width="80" height="30" rx="1.5" fill="none" stroke="#4E2C13" stroke-opacity=".45"/>
+          <circle cx="110" cy="235" r="5.5" fill="url(#gBrass)"/>
+          <circle cx="108.4" cy="233.4" r="1.6" fill="#F6E2AA" opacity=".85"/>
+        </g>
+      </g>
+      <path d="M61 149L81 135H183L163 149Z" fill="url(#gBrass)"/>
+      <g fill="#5A4214"><circle cx="69" cy="146" r="1.8"/><circle cx="157" cy="146" r="1.8"/><circle cx="176" cy="138" r="1.8"/><circle cx="88" cy="138" r="1.8"/></g>
+      <ellipse cx="122" cy="142" rx="31" ry="5" fill="#5E4517"/>
+      <path d="M80 112Q83 137 98 141H146Q161 137 164 112Z" fill="url(#gBrass)"/>
+      <ellipse cx="122" cy="112" rx="42" ry="9" fill="#D2AD63"/>
+      <ellipse cx="122" cy="112" rx="37" ry="7" fill="#24160C"/>
+      <g clip-path="url(#cBowl)"><g id="mBeans" fill="#6B3B1C" stroke="#2A1508" stroke-width=".8"></g></g>
+    </g>
+    <g id="crankBack"></g>
+    <rect x="120" y="86" width="4" height="26" fill="#3A3A33"/>
+    <g id="crankFront"><g id="crank"><path id="arm" fill="none" stroke="#2C2C27" stroke-width="4.5" stroke-linecap="round"/><g id="knob"><rect x="-5" y="-26" width="10" height="26" rx="5" fill="url(#gKnob)"/><ellipse cx="0" cy="-25" rx="3.6" ry="1.5" fill="#C08452"/></g></g></g>
+    <circle cx="122" cy="86" r="4.6" fill="#47473F"/><circle cx="121" cy="85" r="1.4" fill="#9A9A8E"/>
+    <g id="aroma" transform="translate(-12 10)" fill="none" stroke="#E6E1D1" stroke-width="2" stroke-linecap="round">
+      <path d="M78 214c-6-8 6-12 0-20s6-12 0-20"/><path d="M98 216c-6-8 6-12 0-20s6-12 0-20"/><path d="M118 214c-6-8 6-12 0-20s6-12 0-20"/>
+    </g>
+  </svg>
+  <p class="splash-t">Kaffee mit Freunden</p>
+</div>
 
 <script type="module" src="app.js"></script>
 </body>
