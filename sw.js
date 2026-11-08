@@ -1,7 +1,7 @@
 // Service Worker: holt die App immer frisch aus dem Netz und fällt offline auf die letzte Kopie zurück.
-// Die Daten selbst liegen in IndexedDB und werden hier nicht angefasst.
-const CACHE = 'kaffeetagebuch-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+// Anfragen an Supabase (Daten, Anmeldung, Fotos) laufen unverändert durch.
+const CACHE = 'kaffeetagebuch-v2';
+const SHELL = ['./', './index.html', './app.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -14,6 +14,7 @@ self.addEventListener('activate', e => {
 });
 
 const keep = (req, res) => { if (res && (res.ok || res.type === 'opaque')) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; };
+const STATIC_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'];
 
 self.addEventListener('fetch', e => {
   const req = e.request;
@@ -23,8 +24,8 @@ self.addEventListener('fetch', e => {
     // eigene Dateien: Netz zuerst, damit Verbesserungen sofort ankommen
     e.respondWith(fetch(req).then(res => keep(req, res))
       .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
-  } else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
-    // Schriften ändern sich nicht: Kopie zuerst
+  } else if (STATIC_HOSTS.includes(url.hostname)) {
+    // Schriften und Bibliothek mit fester Version: Kopie zuerst
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => keep(req, res))));
   }
 });
