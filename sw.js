@@ -1,6 +1,6 @@
 // Service Worker: holt die App immer frisch aus dem Netz und fällt offline auf die letzte Kopie zurück.
 // Anfragen an Supabase (Daten, Anmeldung, Fotos) laufen unverändert durch.
-const CACHE = 'kaffeetagebuch-v3';
+const CACHE = 'kaffeetagebuch-v4';
 const SHELL = ['./', './index.html', './app.css', './app.js', './config.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

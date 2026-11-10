@@ -494,3 +494,51 @@ input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 
 .score .big, .recipe b, .totals b, .grind-val, .sw-t, .stars-v { font-family: var(--f-num); font-weight: 500; letter-spacing: -.02em; }
 .recipe b { font-size: 22px; }
 .score .big { font-size: 44px; }
+
+/* ---------- Version 2.2: einfacher mit Freunden ---------- */
+/* iOS zoomt in Felder mit weniger als 16px Schrift hinein, deshalb überall 16px */
+.field input, .field select, .inp, .m-row .inp, .search input { font-size: 16px; }
+body.locked { overflow: hidden; }
+.grow { flex: 1; min-width: 0; }
+
+.vhead.brand h1 { font-size: 25px; }
+.icon-btn.round { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); color: var(--accent); box-shadow: var(--shadow); flex: none; }
+.icon-btn.round svg { width: 22px; height: 22px; }
+
+.search { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 14px; margin-bottom: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.search svg { width: 18px; height: 18px; flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; color: var(--ink); }
+.search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.tabs button { position: relative; }
+.badge-n { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--bark); color: #fff; font: 700 11px/18px var(--f-ui); font-style: normal; text-align: center; }
+.lrow .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bark); margin-right: 6px; vertical-align: 1px; }
+
+.sh-foot { padding: 10px 20px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); background: var(--bg); }
+.sheet .sh-body { padding-bottom: 28px; }
+
+.gate-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gate-links .txt[disabled] { opacity: .6; pointer-events: none; }
+
+.welcome { padding: 8px 6px 4px; display: flex; flex-direction: column; gap: 14px; }
+.welcome h2 { font: 400 24px/1.15 var(--f-serif); margin: 0; }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; column-gap: 12px; align-items: start; }
+.steps li::before { content: counter(s); grid-row: 1 / span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 500 15px var(--f-num); }
+.steps b { font-weight: 700; }
+.steps span { grid-column: 2; color: var(--ink-2); font-size: 14px; }
+.hint .txt { padding: 0; font-size: inherit; }
+
+.members { display: flex; flex-direction: column; }
+.member { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.member:first-child { border-top: 0; }
+.member b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member span:last-child { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+/* Detailseite: Foto kleiner, damit Preis und Bewertung ohne Scrollen sichtbar sind */
+.hero { height: min(40vh, 330px); width: auto; max-height: none; margin: 4px auto 18px; }
+.hero .blank b { font-size: 22px; }
+.vhead.brand { gap: 12px; }
+.vhead.brand h1 { font-size: 22px; white-space: nowrap; }
+.vhead.brand .logo { width: 44px; height: 44px; }
+.vhead.brand .logo svg { width: 26px; height: 26px; }

@@ -1,4 +1,4 @@
-// Kaffee mit Freunden (Version 2.1): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.2): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
 
@@ -19,6 +19,7 @@ const dLong = ts => new Date(ts).toLocaleDateString('de-DE', { weekday: 'long', 
 const hhmm = ts => new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const parseNum = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : 0; };
 const isoDay = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const hash = s => [...String(s)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
 const uidLocal = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const DAY = 864e5;
@@ -74,7 +75,7 @@ const DEFAULTS = {
 };
 const S = {
   uid: null, email: '', me: null, profiles: new Map(), beans: [], brews: [],
-  gFilter: 'all', gSort: 'new', lFilter: 'all', openBean: null, openBrew: null, loadedAt: 0
+  gFilter: 'all', gSort: 'new', lFilter: 'all', q: '', openBean: null, openBrew: null, loadedAt: 0
 };
 const settings = () => S.me.settings;
 const myMethods = () => settings().methods.filter(m => !m.archived);
@@ -167,11 +168,14 @@ function toast(msg) {
 
 /* ================= Ebenen mit Zurück-Taste ================= */
 const stack = [];
+// Nach einem Neuladen kann der Verlaufseintrag noch einen alten Ebenen-Stand tragen. Zurücksetzen, sonst schließt nichts mehr.
+try { history.replaceState({ layer: 0 }, ''); } catch (e) {}
 function openLayer(el) {
   if (stack.includes(el)) return;
   stack.push(el); el.inert = false; el.classList.add('open');
   if (el.classList.contains('sheet')) $('#scrim').classList.add('on');
   history.pushState({ layer: stack.length }, '');
+  document.body.classList.add('locked');
 }
 function closeTop() {
   const el = stack.pop(); if (!el) return;
@@ -180,6 +184,7 @@ function closeTop() {
   if (!stack.some(x => x.classList.contains('sheet'))) $('#scrim').classList.remove('on');
   if (el.id === 'beanPanel') S.openBean = null;
   if (el.id === 'brewPanel') S.openBrew = null;
+  if (!stack.length) document.body.classList.remove('locked');
 }
 // UI-Schließen läuft über die Browser-History, damit Wischgeste und Zurück-Taste dasselbe tun
 addEventListener('popstate', () => {
@@ -218,7 +223,7 @@ $('#fEmail').addEventListener('submit', async e => {
   }
   S.email = email; $('#sentTo').textContent = email;
   try { localStorage.setItem('kt.email', email); } catch (er) {}
-  showGate('fCode');
+  showGate('fCode'); resendCooldown(60);
 });
 $('#fCode').addEventListener('submit', async e => {
   e.preventDefault();
@@ -231,6 +236,19 @@ $('#fCode').addEventListener('submit', async e => {
 });
 $('#inCode').addEventListener('input', e => { const v = e.target.value.replace(/\D/g, ''); e.target.value = v; if (v.length === 6 && !e.target.dataset.sent) { e.target.dataset.sent = 1; $('#fCode').requestSubmit(); setTimeout(() => delete e.target.dataset.sent, 1500); } });
 $('#otherMail').onclick = () => showGate('fEmail');
+let resendT = 0;
+function resendCooldown(sec) {
+  const b = $('#resend'); clearInterval(resendT);
+  const tick = () => { b.disabled = sec > 0; b.textContent = sec > 0 ? `Nochmal schicken in ${sec} s` : 'Code nochmal schicken'; if (sec-- <= 0) clearInterval(resendT); };
+  tick(); resendT = setInterval(tick, 1000);
+}
+$('#resend').onclick = async () => {
+  if (!S.email) { showGate('fEmail'); return; }
+  resendCooldown(60);
+  const { error } = await sb.auth.signInWithOtp({ email: S.email, options: { emailRedirectTo: location.origin + location.pathname } });
+  gateMsg(error ? 'Das hat nicht geklappt. Bitte gleich nochmal versuchen.' : '');
+  if (!error) { $('#inCode').value = ''; $('#inCode').focus(); }
+};
 $('#fName').addEventListener('submit', async e => {
   e.preventDefault();
   const name = $('#inName').value.trim();
@@ -251,8 +269,10 @@ async function enter() {
     }
     if (!S.me || !S.me.name) { showGate('fName'); return; }
     $('#gate').hidden = true; $('#app').hidden = false;
+    if (!getSeen()) setSeen();
     renderAll(); renderMe();
     bootDone();
+    if (!settings().welcomed) setTimeout(showWelcome, 900);
   } catch (e) {
     bootDone();
     showGate('fEmail'); gateMsg('Verbindung zur Datenbank fehlgeschlagen. Bitte neu laden.');
@@ -266,25 +286,81 @@ function showView(id) {
   $('#fab').hidden = id === 'v-me';
   scrollTo({ top: 0 });
 }
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { showView(b.dataset.v); if (b.dataset.v === 'v-me') renderMe(); } });
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  showView(b.dataset.v);
+  if (b.dataset.v === 'v-me') renderMe();
+  if (b.dataset.v === 'v-log') { renderLog(); setSeen(); updateBadge(); }
+  if (Date.now() - S.loadedAt > 20000) refresh();
+});
 
-function renderAll() { renderGallery(); renderLog(); }
+function renderAll() { renderGallery(); renderLog(); updateBadge(); }
+
+// Was ist neu seit dem letzten Blick in den Verlauf?
+const SEEN_KEY = 'kt.seen';
+function getSeen() { try { return +localStorage.getItem(SEEN_KEY + '.' + S.uid) || 0; } catch (e) { return 0; } }
+function setSeen() { try { localStorage.setItem(SEEN_KEY + '.' + S.uid, String(Date.now())); } catch (e) {} }
+const isNew = (c, seen) => c.user_id !== S.uid && new Date(c.created_at).getTime() > seen;
+function updateBadge() {
+  const seen = getSeen(), n = S.brews.filter(c => isNew(c, seen)).length, el = $('#logBadge');
+  el.hidden = !n; el.textContent = n > 9 ? '9+' : n;
+}
+
+/* ================= Einladen und Begrüßung ================= */
+const APP_URL = location.origin + location.pathname;
+async function invite() {
+  const text = 'Kaffee mit Freunden: Hier sammeln wir Bohnen und bewerten sie gemeinsam. Anmelden mit deiner E-Mail, ein Passwort brauchst du nicht.';
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Kaffee mit Freunden', text, url: APP_URL }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text + ' ' + APP_URL); toast('Einladung kopiert. Jetzt in den Chat einfügen.'); }
+  catch (e) { toast('Link: ' + APP_URL); }
+}
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function installTip() {
+  if (isStandalone()) return '';
+  if (installEvt) return `<button class="btn block" data-act="install">Als App auf den Homescreen legen</button>`;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return `<p class="hint"><b>Als App aufs Handy:</b> ${ios ? 'Unten auf das Teilen-Symbol tippen, dann „Zum Home-Bildschirm“.' : 'Im Browser-Menü „Zum Startbildschirm hinzufügen“ wählen.'}</p>`;
+}
+function showWelcome() {
+  if (stack.length) return;
+  const n = S.beans.length;
+  $('#infoBody').innerHTML = `
+    <div class="welcome">
+      <h2>Schön, dass du da bist, ${esc(S.me.name)}</h2>
+      <ol class="steps">
+        <li><b>Stöbern</b><span>${n ? `Hier ${n === 1 ? 'liegt schon 1 Packung' : `liegen schon ${n} Packungen`}. Antippen zeigt Preis, Kaufort und alle Bewertungen.` : 'Hier landen alle Packungen, die jemand von uns einträgt.'}</span></li>
+        <li><b>Bewerten</b><span>Packung antippen und Sterne vergeben. Ein Rezept notierst du nur, wenn du magst.</span></li>
+        <li><b>Eigene Packung</b><span>Über das Plus fotografieren. Danach können alle sie bewerten.</span></li>
+      </ol>
+      ${installTip()}
+      <button class="btn primary block" data-act="close">Los geht’s</button>
+    </div>`;
+  openLayer($('#infoSheet'));
+  settings().welcomed = true; saveSettings();
+}
 
 const G_FILTERS = [['all', 'Alle'], ['open', 'Neu für mich'], ['roaster', 'Röster'], ['super', 'Supermarkt']];
 function renderGallery() {
-  const np = S.profiles.size;
-  $('#bSub').textContent = S.beans.length ? `${S.beans.length} ${S.beans.length === 1 ? 'Packung' : 'Packungen'} · ${S.brews.length} ${S.brews.length === 1 ? 'Bewertung' : 'Bewertungen'} · ${np} ${np === 1 ? 'Person' : 'Personen'}` : 'Willkommen';
+  $('#bSub').textContent = S.beans.length ? `${S.beans.length} ${S.beans.length === 1 ? 'Packung' : 'Packungen'} · ${S.brews.length} ${S.brews.length === 1 ? 'Bewertung' : 'Bewertungen'}` : `Hallo ${S.me.name}`;
   $('#gFilter').innerHTML = G_FILTERS.map(([k, l]) => `<button class="chip" data-gf="${k}" aria-pressed="${S.gFilter === k}">${l}</button>`).join('');
   let list = S.beans.map(b => ({ b, a: beanAgg(b) }));
   if (S.gFilter === 'open') list = list.filter(x => !x.a.mine.length);
   if (S.gFilter === 'roaster' || S.gFilter === 'super') list = list.filter(x => x.b.kind === S.gFilter);
+  $('#gSearchBox').hidden = S.beans.length < 6 && !S.q;
+  const q = norm(S.q);
+  if (q) list = list.filter(x => norm([x.b.name, x.b.roaster, x.b.place, x.b.origin].join(' ')).includes(q));
   if (S.gSort === 'rating') list.sort((x, y) => y.a.avg - x.a.avg);
   if (S.gSort === 'price') list.sort((x, y) => (x.a.per100 || 1e9) - (y.a.per100 || 1e9));
   if (!S.beans.length) {
     $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch keine Packung</h2><p>Fotografier deine erste Bohnenpackung. Danach können alle sie bewerten.</p><button class="btn primary" data-act="new-bean">Erste Packung anlegen</button></div>`;
     return;
   }
-  if (!list.length) { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><p>${S.gFilter === 'open' ? 'Du hast schon alles bewertet.' : 'Nichts in diesem Filter.'}</p></div>`; return; }
+  if (!list.length) { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><p>${q ? 'Nichts gefunden. Trag die Packung einfach selbst ein.' : S.gFilter === 'open' ? 'Du hast schon alles bewertet.' : 'Nichts in diesem Filter.'}</p>${q ? '<button class="btn" data-act="new-bean">Neue Packung anlegen</button>' : ''}</div>`; return; }
   $('#grid').innerHTML = list.map(({ b, a }, i) => `
     <button class="tile" data-act="bean" data-id="${b.id}" style="animation-delay:${Math.min(i, 12) * 35}ms" aria-label="${esc(b.name)}${b.price ? ', ' + eur(b.price) : ''}">
       <span class="ph" style="display:block">${beanInner(b)}
@@ -299,6 +375,7 @@ function renderGallery() {
 }
 $('#gFilter').addEventListener('click', e => { const c = e.target.closest('[data-gf]'); if (c) { S.gFilter = c.dataset.gf; renderGallery(); buzz(4); } });
 $('#gSort').addEventListener('change', e => { S.gSort = e.target.value; renderGallery(); });
+$('#gSearch').addEventListener('input', e => { S.q = e.target.value; renderGallery(); });
 
 function renderLog() {
   const mine = S.brews.filter(c => c.user_id === S.uid).length;
@@ -309,6 +386,7 @@ function renderLog() {
   if (S.lFilter === 'others') list = list.filter(c => c.user_id !== S.uid);
   if (!list.length) { $('#logList').innerHTML = `<div class="empty"><h2>Noch nichts</h2><p>Hier erscheint jede Bewertung, deine und die der anderen.</p></div>`; return; }
   let last = '', h = '';
+  const seen = getSeen();
   list.forEach(c => {
     const b = bean(c.bean_id); if (!b) return;
     const day = isoDay(c.brewed_at);
@@ -318,7 +396,7 @@ function renderLog() {
       h += `<div class="day">${diff === 0 ? 'Heute' : diff === 1 ? 'Gestern' : dLong(c.brewed_at)}</div>`;
     }
     h += `<button class="lrow" data-act="brew" data-id="${c.id}">${beanThumb(b)}
-      <span style="min-width:0"><b>${esc(b.name)}</b><span class="meta">${esc(c.method_name || TYPES[c.method_type])} · ${pname(c.user_id)} · ${hhmm(c.brewed_at)}</span></span>
+      <span style="min-width:0"><b>${isNew(c, seen) ? '<i class="dot" aria-label="neu"></i>' : ''}${esc(b.name)}</b><span class="meta">${esc(c.method_name || TYPES[c.method_type])} · ${pname(c.user_id)} · ${hhmm(c.brewed_at)}</span></span>
       <span class="right">${c.stars ? starsHTML(c.stars, 12) : '<span class="meta">ohne Sterne</span>'}${avatar(c.user_id, 20)}</span></button>`;
   });
   $('#logList').innerHTML = h;
@@ -509,7 +587,7 @@ function openBrewForm(opt = {}) {
     const lastB = mine.find(c => c.bean_id === beanId && methodFor(c));
     const m = (src && methodFor(src)) || (lastB && methodFor(lastB)) || (mine[0] && methodFor(mine[0])) || myMethods()[0];
     const p = prefill(m, src && src.has_recipe ? src : null, beanId);
-    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: settings().recipeDefault !== false, stars: 0, acid: 5, sweet: 5, bitter: 5, ...p.vals };
+    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: mine.length ? !!mine[0].has_recipe : false, stars: 0, acid: 5, sweet: 5, bitter: 5, ...p.vals };
     draft._note = src ? (src.user_id === S.uid ? `Vorlage vom ${dShort(src.brewed_at)}` : `Rezept von <b>${esc(person(src.user_id).name)}</b> übernommen`) : noteFor(p);
     if (src) draft.has_recipe = true;
   }
@@ -732,6 +810,8 @@ $('#brSave').onclick = async () => {
   toast(isNew ? 'Bewertung gespeichert' : 'Änderung gespeichert');
 };
 
+$('#brSave2').onclick = () => $('#brSave').click();
+
 /* ================= Packung anlegen ================= */
 let bDraft = null, bFromForm = false, bBlob = null;
 function openBeanForm(id, fromForm) {
@@ -752,6 +832,7 @@ function openBeanForm(id, fromForm) {
     </div>
     <div class="f-sec stack">
       <label class="field"><span>Name der Bohne</span><input id="bfName" value="${esc(bDraft.name)}" placeholder="zum Beispiel Kolumbien Huila" autocomplete="off" maxlength="120"></label>
+      <div id="bfDup"></div>
       <div class="field"><span>Gekauft beim</span>
         <div class="seg" id="bfKind" role="radiogroup">
           <button role="radio" type="button" data-k="roaster" aria-checked="${bDraft.kind === 'roaster'}">Röster</button>
@@ -777,11 +858,19 @@ function openBeanForm(id, fromForm) {
   $('#bfBody').scrollTop = 0;
   openLayer($('#beanSheet'));
 }
+// Gemeinsamer Katalog: vor doppelten Packungen warnen
+function dupHint() {
+  const el = $('#bfDup'); if (!el || bDraft.id) return;
+  const n = norm($('#bfName').value);
+  const hit = n.length >= 4 && S.beans.find(b => { const m = norm(b.name); return m === n || (m.length >= 4 && (m.includes(n) || n.includes(m))); });
+  el.innerHTML = hit ? `<p class="hint">Gibt es schon: <b>${esc(hit.name)}</b>${hit.roaster ? ' von ' + esc(hit.roaster) : ''}, eingetragen von ${hit.created_by === S.uid ? 'dir' : esc(person(hit.created_by).name)}. <button type="button" class="txt strong" data-act="dup-open" data-id="${hit.id}">Dort bewerten</button></p>` : '';
+}
 function ppk() {
   const p = parseNum($('#bfPrice').value), w = parseNum($('#bfWeight').value);
   $('#bfPpk').innerHTML = p && w ? `Das sind <b>${eur(p / w * 100)}</b> je 100 g.` : '';
 }
 $('#bfBody').addEventListener('input', e => {
+  if (e.target.id === 'bfName') dupHint();
   if (e.target.id === 'bfPrice' || e.target.id === 'bfWeight') {
     ppk();
     if (e.target.id === 'bfWeight') $('#bfSizes').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(+c.dataset.w === parseNum(e.target.value))));
@@ -878,15 +967,25 @@ $('#bfSave').onclick = async () => {
   finally { btn.disabled = false; }
 };
 
+$('#bfSave2').onclick = () => $('#bfSave').click();
+
 /* ================= Profil ================= */
 function renderMe() {
   if (!S.me) return;
   $('#meName').textContent = S.me.name;
   const s = settings();
   const n = myBrews().length, nb = S.beans.filter(b => b.created_by === S.uid).length;
+  const members = [...S.profiles.values()].filter(m => m.name).map(m => {
+    const bs = S.brews.filter(c => c.user_id === m.id), r = bs.filter(c => c.stars > 0);
+    return { id: m.id, name: m.name, n: bs.length, avg: r.length ? r.reduce((a, c) => a + c.stars, 0) / r.length : 0 };
+  }).sort((a, b) => (b.id === S.uid) - (a.id === S.uid) || b.n - a.n);
   $('#meBody').innerHTML = `
     <div class="card"><div class="who">${avatar(S.uid, 48)}<div><b>${esc(S.me.name)}</b><div class="mail">${esc(S.email)}</div></div></div>
       <p style="margin:14px 0 0;color:var(--muted);font-size:14px">${n} ${n === 1 ? 'Bewertung' : 'Bewertungen'} · ${nb} ${nb === 1 ? 'Packung' : 'Packungen'} eingetragen</p></div>
+    <div class="card"><h2>Wer ist dabei</h2><p>${members.length === 1 ? 'Bisher nur du. Lad deine Leute ein.' : `${members.length} Personen bewerten gemeinsam.`}</p>
+      <div class="members">${members.map(m => `<div class="member">${avatar(m.id, 34)}<b>${m.id === S.uid ? esc(m.name) + ' (du)' : esc(m.name)}</b><span>${m.n} ${m.n === 1 ? 'Bewertung' : 'Bewertungen'}${m.avg ? ' · Ø ' + de(m.avg) : ''}</span></div>`).join('')}</div>
+      <button class="btn primary block" data-act="invite" style="margin-top:12px">Freunde einladen</button>
+      ${installTip() ? `<div style="margin-top:10px">${installTip()}</div>` : ''}</div>
     <div class="card"><h2>Name</h2><p>So sehen dich die anderen.</p>
       <label class="field"><input id="setName" value="${esc(S.me.name)}" maxlength="40" aria-label="Name"></label></div>
     <div class="card"><h2>Mahlgrad</h2><p>Deine Standardwerte auf der Skala von 0 bis 90. Jede Person hat eigene, weil jede Mühle anders mahlt.</p>
@@ -896,8 +995,7 @@ function renderMe() {
         <input class="inp" data-mname value="${esc(m.name)}" aria-label="Name">
         <select class="inp" data-mtype aria-label="Art">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}"${k === m.type ? ' selected' : ''}>${v}</option>`).join('')}</select>
         <button class="icon-btn" data-mdel aria-label="Entfernen">${ICON.trash}</button></div>`).join('')}</div>
-      <button class="btn block" id="addMethod" style="margin-top:6px">Zubereitung hinzufügen</button>
-      <label class="switch" style="margin-top:18px"><span><b>Rezept standardmäßig notieren</b><small>Aus, wenn du meist nur bewertest</small></span><input type="checkbox" id="setRecipe"${s.recipeDefault !== false ? ' checked' : ''}><span class="tg"></span></label></div>
+      <button class="btn block" id="addMethod" style="margin-top:6px">Zubereitung hinzufügen</button></div>
     <div class="card"><h2>Alte Daten übernehmen</h2><p>Lade die Sicherungsdatei aus der bisherigen App. Packungen, Fotos und Kaffees landen dann unter deinem Namen.${s.imported ? ` Schon einmal importiert am ${dFull(s.imported)}.` : ''}</p>
       <label class="btn block" style="cursor:pointer">Sicherung auswählen<input type="file" accept="application/json,.json" id="importFile" class="vh"></label>
       <p class="fine" id="importMsg" style="margin-top:10px"></p></div>
@@ -924,7 +1022,6 @@ $('#meBody').addEventListener('change', async e => {
     const m = settings().methods.find(x => x.id === t.closest('.m-row').dataset.id);
     m.name = t.value.trim() || m.name; t.value = m.name; await saveSettings();
   }
-  if (t.id === 'setRecipe') { settings().recipeDefault = t.checked; await saveSettings(); }
   if (t.id === 'importFile') importBackup(t);
 });
 $('#meBody').addEventListener('click', async e => {
@@ -1010,6 +1107,9 @@ document.addEventListener('click', e => {
   const id = a.dataset.id;
   switch (a.dataset.act) {
     case 'close': closeLayer(); break;
+    case 'invite': invite(); break;
+    case 'install': if (installEvt) { installEvt.prompt(); installEvt = null; closeLayer(); } break;
+    case 'dup-open': closeAllLayers().then(() => openBean(id)); break;
     case 'bean': openBean(id); break;
     case 'brew': openBrew(id); break;
     case 'bean-from-brew':

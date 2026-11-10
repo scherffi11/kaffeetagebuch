@@ -1,4 +1,4 @@
-# Kaffeetagebuch
+# Kaffee mit Freunden
 
 Gemeinsame Web-App für Freunde: Bohnenpackungen mit Foto, Preis und Kaufort festhalten, jeden Kaffee bewerten, auf Wunsch mit Rezept. Mehrere Personen können dieselbe Packung bewerten, jede Bewertung zeigt, von wem sie ist.
 

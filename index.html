@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaffee mit Freunden</title>
 <meta name="description" content="Kaffeebohnen, Rezepte und Bewertungen, gemeinsam mit Freunden">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kaffee mit Freunden">
+<meta property="og:description" content="Wir sammeln Kaffeebohnen und bewerten sie gemeinsam. Anmelden mit deiner E-Mail, ohne Passwort.">
+<meta property="og:image" content="https://kaffeetagebuch.vercel.app/icons/icon-512.png">
+<meta property="og:url" content="https://kaffeetagebuch.vercel.app/">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#E3E2D3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131B15" media="(prefers-color-scheme: dark)">
@@ -41,8 +46,8 @@
       <p class="sent">Code geschickt an <b id="sentTo"></b></p>
       <label class="field"><span>Code aus der Mail</span><input id="inCode" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="······" required></label>
       <button class="btn primary" type="submit">Anmelden</button>
-      <p class="fine">Du kannst auch auf den Link in der Mail tippen. Am Handy mit App auf dem Homescreen klappt der Code besser.</p>
-      <button class="txt" type="button" id="otherMail">Andere E-Mail nehmen</button>
+      <p class="fine">Nichts angekommen? Schau im Spam-Ordner nach. Der Code gilt eine Stunde.</p>
+      <div class="gate-links"><button class="txt" type="button" id="resend">Code nochmal schicken</button><button class="txt" type="button" id="otherMail">Andere E-Mail</button></div>
     </form>
 
     <form id="fName" class="gate-form" novalidate hidden>
@@ -60,8 +65,10 @@
     <section class="view on" id="v-beans" aria-label="Bohnen">
       <header class="vhead brand">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g class="steam"><path d="M25 20c-3-4 3-6 0-10"/><path d="M32 20c-3-4 3-6 0-10"/><path d="M39 20c-3-4 3-6 0-10"/></g><path d="M15 26h32v9a14 14 0 0 1-14 14h-4a14 14 0 0 1-14-14z"/><path d="M47 29h3a5.5 5.5 0 0 1 0 11h-4"/><path d="M12 55h38"/></svg></span>
-        <div><h1>Kaffee mit Freunden</h1><p class="eyebrow" id="bSub"></p></div>
+        <div class="grow"><h1>Kaffee mit Freunden</h1><p class="eyebrow" id="bSub"></p></div>
+        <button class="icon-btn round" data-act="invite" aria-label="Freunde einladen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3 19.5c.9-3.2 3.3-4.9 6.5-4.9s5.6 1.7 6.5 4.9"/><path d="M18.5 7.5v6M15.5 10.5h6"/></svg></button>
       </header>
+      <label class="search" id="gSearchBox" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg><input type="search" id="gSearch" placeholder="Bohne, Rösterei oder Laden suchen" autocomplete="off" aria-label="Packungen durchsuchen"></label>
       <div class="bar">
         <div class="chips" id="gFilter" role="toolbar" aria-label="Filtern"></div>
       </div>
@@ -99,7 +106,7 @@
       <span>Bohnen</span></button>
     <button data-v="v-log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-      <span>Verlauf</span></button>
+      <span>Verlauf</span><i class="badge-n" id="logBadge" hidden></i></button>
     <button data-v="v-me">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4" stroke-linecap="round"/></svg>
       <span>Profil</span></button>
@@ -126,11 +133,14 @@
   <div class="sheet" id="brewSheet" inert>
     <div class="sh-head"><button class="txt" data-act="close">Abbrechen</button><b id="brTitle">Kaffee bewerten</b><button class="txt strong" id="brSave">Sichern</button></div>
     <div class="sh-body" id="brBody"></div>
+    <div class="sh-foot"><button class="btn primary block" id="brSave2">Bewertung speichern</button></div>
   </div>
   <div class="sheet" id="beanSheet" inert>
     <div class="sh-head"><button class="txt" data-act="close">Abbrechen</button><b id="bfTitle">Neue Packung</b><button class="txt strong" id="bfSave">Sichern</button></div>
     <div class="sh-body" id="bfBody"></div>
+    <div class="sh-foot"><button class="btn primary block" id="bfSave2">Packung speichern</button></div>
   </div>
+  <div class="sheet small" id="infoSheet" inert><div class="sh-body" id="infoBody"></div></div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
@@ -197,6 +207,14 @@
   <p class="splash-t">Kaffee mit Freunden</p>
 </div>
 
+<!-- Sicherheitsnetz: Falls die App nicht startet, bleibt niemand auf dem Startbild hängen -->
+<script>
+setTimeout(function () {
+  var s = document.getElementById('splash'), g = document.getElementById('gate'), a = document.getElementById('app');
+  if (!s || (g && !g.hidden) || (a && !a.hidden)) return;
+  s.innerHTML = '<p class="splash-t" style="font-size:20px;text-align:center;padding:0 28px">Das Laden klappt gerade nicht.</p><button class="btn" style="margin-top:18px" onclick="location.reload()">Nochmal versuchen</button>';
+}, 12000);
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
