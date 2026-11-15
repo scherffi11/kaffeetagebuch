@@ -48,7 +48,13 @@ const TASTE = [
   { k: 'sweet', l: 'Süße', c: 'var(--sweet)', lo: 'kaum', hi: 'viel' },
   { k: 'bitter', l: 'Bitterkeit', c: 'var(--bitter)', lo: 'kaum', hi: 'kräftig' }
 ];
-const tasteWord = v => v <= 1 ? 'kaum' : v <= 3 ? 'wenig' : v <= 6 ? 'mittel' : v <= 8 ? 'deutlich' : 'stark';
+/* Geschmack in drei Stufen: wenig, mittel, viel. Gespeichert als 2, 5, 8 auf der alten Skala 0 bis 10. */
+const LEVELS = [{ v: 2, l: 'wenig' }, { v: 5, l: 'mittel' }, { v: 8, l: 'viel' }];
+const levelOf = v => v === null || v === undefined ? -1 : v <= 3 ? 0 : v <= 6 ? 1 : 2;
+const tasteWord = v => levelOf(v) < 0 ? '' : LEVELS[levelOf(v)].l;
+const levelIcon = n => `<svg class="lv" viewBox="0 0 18 14" aria-hidden="true">${[0, 1, 2].map(i => `<rect x="${i * 6 + 1}" y="${10 - i * 4}" width="4" height="${4 + i * 4}" rx="1.5"${i <= n ? ' class="on"' : ''}/>`).join('')}</svg>`;
+const STAR_WORDS = ['', 'Nicht meins', 'Geht so', 'Ganz okay', 'Richtig gut', 'Großartig'];
+const starWord = n => n ? STAR_WORDS[clamp(Math.ceil(n), 1, 5)] : '';
 const starFill = (n, i) => clamp(n - (i - 1), 0, 1);
 const starHTML = fill => `<span class="st">${ICON.star}<span class="f" style="width:${fill * 100}%">${ICON.star}</span></span>`;
 const starsHTML = (n, size) => { n = Math.round((n || 0) * 2) / 2; return `<span class="stars"${size ? ` style="--ss:${size}px"` : ''} aria-label="${deStars(n)} von 5 Sternen">${[1, 2, 3, 4, 5].map(i => starHTML(starFill(n, i))).join('')}</span>`; };
@@ -471,8 +477,8 @@ function renderBrewPanel(id) {
       ${b ? `<button class="bean-mini" data-act="bean-from-brew" data-id="${b.id}">${beanThumb(b)}<span><b>${esc(b.name)}</b><span>${esc(b.roaster)}${b.price ? ' · ' + eur(b.price) : ''}</span></span>${ICON.chev}</button>` : ''}
       <div class="byline">${avatar(c.user_id, 26)}<span>${own ? 'Deine Bewertung' : esc(person(c.user_id).name)} · ${dLong(c.brewed_at)}, ${hhmm(c.brewed_at)}</span></div>
       <h1 class="d-title">${esc(c.method_name || TYPES[c.method_type])}</h1>
-      <div class="score">${c.stars ? `<span class="big">${deStars(c.stars)}</span><div>${starsHTML(c.stars)}<p>von 5 Sternen</p></div>` : '<div><b style="font-weight:500">Ohne Sterne</b></div>'}</div>
-      ${tastes.length ? `<section class="sec"><h3>Geschmack</h3><div class="taste">${tastes.map(t => `<div class="tl"><span>${t.l}</span><div class="tr" style="--c:${t.c}"><i style="width:${c[t.k] * 10}%"></i></div><em>${tasteWord(c[t.k])}</em></div>`).join('')}</div></section>` : ''}
+      <div class="score">${c.stars ? `<span class="big">${deStars(c.stars)}</span><div>${starsHTML(c.stars)}<p class="sw-word">${starWord(c.stars)}</p></div>` : '<div><b style="font-weight:500">Ohne Sterne</b></div>'}</div>
+      ${tastes.length ? `<section class="sec"><h3>Geschmack</h3><div class="taste-out">${tastes.map(t => `<div class="to" style="--c:${t.c}">${levelIcon(levelOf(c[t.k]))}<b>${tasteWord(c[t.k])}</b><span>${t.l}</span></div>`).join('')}</div></section>` : ''}
       ${c.has_recipe ? `<section class="sec"><h3>Rezept</h3><div class="recipe">${rec}</div>${extra}</section>` : ''}
       <div class="acts">${c.has_recipe ? `<button class="btn ${own ? 'primary' : 'accent'}" data-act="again" data-id="${c.id}">${own ? 'Nochmal machen' : 'Rezept übernehmen'}</button>` : `<button class="btn primary" data-act="rate" data-id="${c.bean_id}">Selbst bewerten</button>`}</div>
     </div>`;
@@ -580,14 +586,14 @@ function openBrewForm(opt = {}) {
     draft._mid = (methodFor(src) || {}).id || null;
     RECIPE_KEYS.forEach(k => { if (draft[k] === null) delete draft[k]; });
     Object.assign(draft, { ...clone(DEFAULTS[src.method_type]), ...draft });
-    TASTE.forEach(t => { if (draft[t.k] === null || draft[t.k] === undefined) draft[t.k] = 5; });
+    TASTE.forEach(t => { draft[t.k] = levelOf(draft[t.k]) < 0 ? null : LEVELS[levelOf(draft[t.k])].v; });
   } else {
     const mine = myBrews();
     const beanId = src ? src.bean_id : (opt.beanId || mine[0]?.bean_id || S.beans[0].id);
     const lastB = mine.find(c => c.bean_id === beanId && methodFor(c));
     const m = (src && methodFor(src)) || (lastB && methodFor(lastB)) || (mine[0] && methodFor(mine[0])) || myMethods()[0];
     const p = prefill(m, src && src.has_recipe ? src : null, beanId);
-    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: mine.length ? !!mine[0].has_recipe : false, stars: 0, acid: 5, sweet: 5, bitter: 5, ...p.vals };
+    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: mine.length ? !!mine[0].has_recipe : false, stars: 0, acid: null, sweet: null, bitter: null, ...p.vals };
     draft._note = src ? (src.user_id === S.uid ? `Vorlage vom ${dShort(src.brewed_at)}` : `Rezept von <b>${esc(person(src.user_id).name)}</b> übernommen`) : noteFor(p);
     if (src) draft.has_recipe = true;
   }
@@ -621,12 +627,17 @@ function renderBrewForm(isEdit) {
   brBody.innerHTML = `
     <div class="f-sec"><div class="f-lbl"><span class="label">Bohne</span><button type="button" class="txt" id="fNewBean">+ Neue Packung</button></div>
       <div class="chips" id="fBeans">${beanChips()}</div></div>
-    <div class="f-sec"><div class="f-lbl"><span class="label">Bewertung</span></div>
-      <div class="stars-in" id="fStars">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-s="${i}" aria-label="${i} Sterne">${starHTML(starFill(draft.stars, i))}</button>`).join('')}<b class="stars-v" id="fStarV"></b></div>
-      <p class="tip">Linke Sternhälfte für halbe Sterne</p>
-      ${TASTE.map(t => `<div class="slider" style="--c:${t.c}"><div class="ends"><span>${t.l}</span><b id="tv-${t.k}"></b></div>
-        <input type="range" min="0" max="10" step="1" data-taste="${t.k}" value="${draft[t.k]}" aria-label="${t.l}" style="--c:${t.c}">
-        <div class="lohi"><span>${t.lo}</span><span>${t.hi}</span></div></div>`).join('')}
+    <div class="f-sec rate">
+      <div class="rate-card">
+        <p class="rate-q">Wie war er?</p>
+        <div class="stars-in" id="fStars">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-s="${i}" aria-label="${i} ${i === 1 ? 'Stern' : 'Sterne'}: ${STAR_WORDS[i]}">${starHTML(starFill(draft.stars, i))}</button>`).join('')}</div>
+        <p class="rate-word" id="fStarV" aria-live="polite"></p>
+      </div>
+      <div class="taste-in">
+        <div class="f-lbl"><span class="label">Geschmack</span><span class="opt">freiwillig</span></div>
+        ${TASTE.map(t => `<div class="tq" style="--c:${t.c}"><span class="tq-n"><i></i>${t.l}</span>
+          <div class="tseg" role="radiogroup" aria-label="${t.l}">${LEVELS.map((L, n) => `<button type="button" role="radio" data-taste="${t.k}" data-v="${L.v}" aria-checked="${levelOf(draft[t.k]) === n}">${levelIcon(n)}<span>${L.l}</span></button>`).join('')}</div></div>`).join('')}
+      </div>
     </div>
     <div class="f-sec"><div class="f-lbl"><span class="label">Zubereitung</span></div>
       <div class="chips" id="fMethods">${unknown ? `<button type="button" class="chip" aria-pressed="true">${ICON[draft.method_type]}${esc(draft.method_name)}</button>` : ''}${ms.map(m => `<button type="button" class="chip" data-m="${m.id}" aria-pressed="${m.id === draft._mid}">${ICON[m.type]}${esc(m.name)}</button>`).join('')}</div>
@@ -643,7 +654,7 @@ function renderBrewForm(isEdit) {
     min: GRIND.min, max: GRIND.max, px: 14, value: clamp(draft.grind, GRIND.min, GRIND.max), label: 'Mahlgrad', marks: settings().marks,
     onChange: v => { draft.grind = v; $('#gVal').textContent = v; $('#gHint').textContent = grindHint(v); }
   });
-  renderSpec(); slidersTxt(); paintStars();
+  renderSpec(); paintStars();
 }
 function grindHint(v) {
   let near = null;
@@ -652,13 +663,11 @@ function grindHint(v) {
   if (!near.d) return `Standard für ${near.l}`;
   return Math.abs(near.d) <= 12 ? `${Math.abs(near.d)} ${near.d > 0 ? 'gröber' : 'feiner'} als ${near.l}` : '';
 }
-function slidersTxt() {
-  TASTE.forEach(t => { $('#tv-' + t.k).textContent = tasteWord(draft[t.k]); });
-  brBody.querySelectorAll('[data-taste]').forEach(i => i.style.setProperty('--p', i.value * 10 + '%'));
-}
 function paintStars() {
   brBody.querySelectorAll('#fStars button').forEach((b, i) => { b.querySelector('.f').style.width = starFill(draft.stars, i + 1) * 100 + '%'; });
-  $('#fStarV').textContent = draft.stars ? deStars(draft.stars) : '';
+  const w = $('#fStarV');
+  w.textContent = draft.stars ? starWord(draft.stars) : 'Antippen zum Bewerten';
+  w.classList.toggle('set', !!draft.stars);
 }
 function renderSpec(anim) {
   const t = draft.method_type, el = $('#fSpec');
@@ -751,13 +760,21 @@ brBody.addEventListener('click', e => {
   }
   const st = e.target.closest('#fStars [data-s]');
   if (st) {
-    const i = +st.dataset.s, r = st.getBoundingClientRect();
-    let n = e.clientX && e.clientX < r.left + r.width / 2 ? i - .5 : i;
+    let n = +st.dataset.s;
     if (n === draft.stars) n = 0;
     draft.stars = n; paintStars();
-    brBody.querySelectorAll('#fStars button').forEach(b => b.classList.remove('pop'));
-    if (n) { st.offsetWidth; st.classList.add('pop'); }
+    const btns = brBody.querySelectorAll('#fStars button');
+    btns.forEach(b => b.classList.remove('pop'));
+    if (n) btns.forEach((b, j) => { if (j < n) { b.style.animationDelay = ''; b.offsetWidth; b.style.setProperty('--d', j * 45 + 'ms'); b.classList.add('pop'); } });
+    const w = $('#fStarV'); w.classList.remove('in'); w.offsetWidth; w.classList.add('in');
     buzz(n === 5 ? [10, 40, 10] : 6); return;
+  }
+  const tb = e.target.closest('[data-taste]');
+  if (tb) {
+    const k = tb.dataset.taste, v = +tb.dataset.v;
+    draft[k] = draft[k] === v ? null : v;
+    tb.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.v === draft[k])));
+    buzz(5); return;
   }
   if (e.target.closest('#fNewBean')) { openBeanForm(null, true); return; }
   if (e.target.id === 'fDelete') {
@@ -768,8 +785,7 @@ brBody.addEventListener('click', e => {
 });
 brBody.addEventListener('input', e => {
   const t = e.target;
-  if (t.dataset.k) { setV(t.dataset.k, parseNum(t.value)); totals(); return; }
-  if (t.dataset.taste) { draft[t.dataset.taste] = +t.value; slidersTxt(); }
+  if (t.dataset.k) { setV(t.dataset.k, parseNum(t.value)); totals(); }
 });
 brBody.addEventListener('change', e => {
   if (e.target.id === 'fRecipe') {

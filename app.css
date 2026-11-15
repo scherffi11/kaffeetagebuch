@@ -341,11 +341,16 @@ dl.facts .old { color: var(--danger); }
 .pourbar .pb i { border-radius: 3px; background: var(--accent); opacity: .85; }
 .pourbar .pb i:first-child { opacity: .45; }
 .pourbar .pb-l { display: flex; gap: 3px; margin-top: 6px; font-size: 12px; color: var(--muted); }
-.taste { margin-top: 14px; }
-.tl { display: grid; grid-template-columns: 90px 1fr 64px; gap: 12px; align-items: center; padding: 6px 0; font-size: 14px; }
-.tl .tr { height: 4px; background: var(--sunk); border-radius: 2px; position: relative; }
-.tl .tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--c); }
-.tl em { font-style: normal; color: var(--muted); font-size: 13px; text-align: right; }
+/* Geschmack in der Detailansicht: drei Kacheln mit Stufen-Symbol */
+.taste-out { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.to { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
+.to .lv { width: 22px; height: 17px; margin-bottom: 6px; }
+.to b { font: 400 18px/1.15 var(--f-serif); color: var(--ink); }
+.to span { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.sw-word { font: 400 16px/1.2 var(--f-serif) !important; color: var(--ink-2) !important; margin-top: 6px !important; }
+/* Stufen-Symbol: drei steigende Balken */
+.lv rect { fill: currentColor; opacity: .22; transition: opacity .2s, fill .2s; }
+.lv rect.on { opacity: 1; fill: var(--c); }
 
 /* Formulare */
 .f-sec { padding: 20px 0; border-bottom: 1px solid var(--line); }
@@ -353,16 +358,43 @@ dl.facts .old { color: var(--danger); }
 .f-lbl { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .f-lbl .txt { font-size: 14px; padding: 0; color: var(--accent); }
 .f-note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
-.stars-in { display: flex; gap: 6px; align-items: center; }
-.stars-in button { width: 44px; height: 44px; padding: 3px; }
-.stars-in .st { --ss: 38px; width: 38px; height: 38px; transition: transform .2s var(--ease); }
-.stars-in button.pop .st { animation: pop .35s var(--ease); }
-.stars-v { margin-left: 8px; font: 400 30px/1 var(--f-serif); min-width: 40px; font-variant-numeric: tabular-nums; }
+/* Bewerten: eine Frage, fünf große Sterne, ein Wort als Antwort */
+.f-sec.rate { padding-top: 16px; }
+.rate-card {
+  text-align: center; padding: 20px 12px 18px; border-radius: 20px;
+  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--star) 16%, var(--surface)) 0%, var(--surface) 70%);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.rate-q { margin: 0 0 12px; font: 400 22px/1.2 var(--f-serif); color: var(--ink); }
+.stars-in { display: flex; gap: 4px; justify-content: center; }
+.stars-in button { width: 54px; height: 54px; padding: 4px; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
+.stars-in button:active .st { transform: scale(.88); }
+.stars-in .st { display: block; --ss: 44px; width: 44px; height: 44px; transition: transform .2s var(--ease); }
+.stars-in button.pop .st { animation: pop .4s var(--spring) var(--d, 0ms) backwards; }
+.rate-word { margin: 10px 0 0; min-height: 24px; font-size: 14px; color: var(--muted); }
+.rate-word.set { font: 400 20px/1.2 var(--f-serif); color: var(--bark); }
+.rate-word.in { animation: rise .3s var(--ease); }
 .tip { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
-.slider { margin-top: 18px; }
-.slider .ends { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
-.slider .ends b { font-weight: 500; color: var(--ink-2); }
-.slider .lohi { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.taste-in { margin-top: 22px; }
+.f-lbl .opt { font-size: 12px; color: var(--muted); }
+.tq { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; padding: 5px 0; }
+.tq-n { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: var(--ink-2); }
+.tq-n i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+.tseg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--sunk); }
+.tseg button {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 52px; padding: 7px 4px 6px;
+  border-radius: 10px; font-size: 13px; color: var(--muted); -webkit-tap-highlight-color: transparent;
+  transition: background .2s, color .2s, box-shadow .2s, transform .15s var(--ease);
+}
+.tseg button:active { transform: scale(.95); }
+.tseg .lv { width: 18px; height: 14px; }
+.tseg button[aria-checked="true"] {
+  background: var(--surface); color: var(--ink); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), inset 0 -2px 0 var(--c);
+}
+.tseg button[aria-checked="true"] .lv { animation: pop .35s var(--spring); }
+.tseg button:not([aria-checked="true"]) .lv rect.on { fill: currentColor; opacity: .5; }
 input[type=range] {
   -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0;
   --p: 50%;
