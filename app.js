@@ -1,6 +1,7 @@
-// Kaffee mit Freunden (Version 2.2): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.5): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
+import { ROASTERS, BRANDS } from './catalog.js';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const BUCKET = 'bean-photos';
@@ -847,13 +848,15 @@ function openBeanForm(id, fromForm) {
       <label class="btn">Mediathek<input type="file" accept="image/*" class="vh" data-photo></label>
     </div>
     <div class="f-sec stack">
-      <label class="field"><span>Name der Bohne</span><input id="bfName" value="${esc(bDraft.name)}" placeholder="zum Beispiel Kolumbien Huila" autocomplete="off" maxlength="120"></label>
+      <label class="field"><span>Name der Bohne</span><input id="bfName" value="${esc(bDraft.name)}" placeholder="Name tippen, zum Beispiel Bombe" autocomplete="off" maxlength="120"></label>
+      <div class="sugg" id="bfSugName" hidden></div>
       <div id="bfDup"></div>
       <div class="field"><span>Gekauft beim</span>
         <div class="seg" id="bfKind" role="radiogroup">
           <button role="radio" type="button" data-k="roaster" aria-checked="${bDraft.kind === 'roaster'}">Röster</button>
           <button role="radio" type="button" data-k="super" aria-checked="${bDraft.kind === 'super'}">Supermarkt</button></div></div>
-      <label class="field"><span id="bfRoLbl">${bDraft.kind === 'super' ? 'Marke' : 'Rösterei'}</span><input id="bfRoaster" value="${esc(bDraft.roaster)}" autocomplete="off"></label>
+      <label class="field"><span id="bfRoLbl">${bDraft.kind === 'super' ? 'Marke' : 'Rösterei'}</span><input id="bfRoaster" value="${esc(bDraft.roaster)}" autocomplete="off" placeholder="zum Beispiel RöstART"></label>
+      <div class="sugg" id="bfSugRo" hidden></div>
       <label class="field"><span>Kaufort</span><input id="bfPlace" value="${esc(bDraft.place)}" placeholder="Laden, Stadt oder Online-Shop" autocomplete="off"></label>
     </div>
     <div class="f-sec stack">
@@ -874,6 +877,42 @@ function openBeanForm(id, fromForm) {
   $('#bfBody').scrollTop = 0;
   openLayer($('#beanSheet'));
 }
+// Vorschläge aus dem Katalog: Kaffees beim Namen, Röstereien und Marken beim Röster-Feld
+const TYPE_TXT = { e: 'Espresso', f: 'Filter', fe: 'Filter und Espresso' };
+const CATALOG = ROASTERS.flatMap((r, ri) => r.coffees.map((c, ci) => ({ r, ri, c, ci, key: norm(c.n + ' ' + r.name + ' ' + (c.o || '')) })));
+function suggestNames() {
+  const box = $('#bfSugName'); if (!box) return;
+  const q = norm($('#bfName').value), ro = norm($('#bfRoaster').value);
+  let hits = [];
+  if (q.length >= 2) hits = CATALOG.filter(x => q.split(' ').every(w => x.key.includes(w)));
+  else if (ro) hits = CATALOG.filter(x => norm(x.r.name) === ro);
+  if (ro && q.length >= 2) hits.sort((a, b) => (norm(b.r.name) === ro) - (norm(a.r.name) === ro));
+  hits = hits.filter(x => norm(x.c.n) !== q || norm(x.r.name) !== ro).slice(0, 6);
+  box.hidden = !hits.length || bDraft.kind === 'super';
+  box.innerHTML = hits.length ? `<p class="sugg-h">${q.length >= 2 ? 'Passende Kaffees' : 'Kaffees von ' + esc(hits[0].r.name)}</p>` + hits.map(x => `<button type="button" class="sugg-i" data-sug-c="${x.ri}:${x.ci}">
+    <span class="sugg-ic" style="--h:${(x.ri * 47) % 360}">${esc(x.r.name.slice(0, 1))}</span>
+    <span class="sugg-t"><b>${esc(x.c.n)}</b><small>${esc(x.r.name)}${x.c.o ? ' · ' + esc(x.c.o) : ''}${x.c.t ? ' · ' + TYPE_TXT[x.c.t] : ''}</small></span>${x.r.local ? `<em>${esc(x.r.city)}</em>` : ''}</button>`).join('') : '';
+}
+function suggestRoasters() {
+  const box = $('#bfSugRo'); if (!box) return;
+  const q = norm($('#bfRoaster').value);
+  let html = '';
+  if (bDraft.kind === 'super') {
+    const hits = BRANDS.filter(b => !q || norm(b).includes(q)).filter(b => norm(b) !== q).slice(0, 8);
+    html = hits.length ? `<div class="sugg-chips">${hits.map(b => `<button type="button" class="chip" data-sug-b="${esc(b)}">${esc(b)}</button>`).join('')}</div>` : '';
+  } else {
+    const hits = ROASTERS.map((r, ri) => ({ r, ri })).filter(x => !q || norm(x.r.name + ' ' + x.r.city).includes(q)).filter(x => norm(x.r.name) !== q).slice(0, q ? 6 : 15);
+    const loc = hits.filter(x => x.r.local), web = hits.filter(x => !x.r.local);
+    const chips = list => `<div class="sugg-chips">${list.map(x => `<button type="button" class="chip" data-sug-r="${x.ri}">${esc(x.r.name)}<small>${esc(x.r.city)}</small></button>`).join('')}</div>`;
+    html = (loc.length ? `<p class="sugg-h">In der Nähe</p>${chips(loc)}` : '') + (web.length ? `<p class="sugg-h">Online</p>${chips(web)}` : '');
+  }
+  box.innerHTML = html; box.hidden = !html;
+}
+function pickRoaster(r) {
+  $('#bfRoaster').value = r.name;
+  if (!$('#bfPlace').value.trim()) $('#bfPlace').value = r.place;
+  $('#bfSugRo').hidden = true;
+}
 // Gemeinsamer Katalog: vor doppelten Packungen warnen
 function dupHint() {
   const el = $('#bfDup'); if (!el || bDraft.id) return;
@@ -885,14 +924,36 @@ function ppk() {
   const p = parseNum($('#bfPrice').value), w = parseNum($('#bfWeight').value);
   $('#bfPpk').innerHTML = p && w ? `Das sind <b>${eur(p / w * 100)}</b> je 100 g.` : '';
 }
+// Antippen eines Vorschlags soll das Feld nicht verlassen
+$('#bfBody').addEventListener('mousedown', e => { if (e.target.closest('.sugg')) e.preventDefault(); });
+$('#bfBody').addEventListener('focusin', e => {
+  if (e.target.id === 'bfRoaster') suggestRoasters();
+  if (e.target.id === 'bfName') suggestNames();
+});
+$('#bfBody').addEventListener('focusout', e => {
+  const id = e.target.id === 'bfRoaster' ? '#bfSugRo' : e.target.id === 'bfName' ? '#bfSugName' : null;
+  if (id) setTimeout(() => { const box = $(id); if (box && !box.contains(document.activeElement)) box.hidden = true; }, 180);
+});
 $('#bfBody').addEventListener('input', e => {
-  if (e.target.id === 'bfName') dupHint();
+  if (e.target.id === 'bfName') { dupHint(); suggestNames(); }
+  if (e.target.id === 'bfRoaster') { suggestRoasters(); suggestNames(); }
   if (e.target.id === 'bfPrice' || e.target.id === 'bfWeight') {
     ppk();
     if (e.target.id === 'bfWeight') $('#bfSizes').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(+c.dataset.w === parseNum(e.target.value))));
   }
 });
 $('#bfBody').addEventListener('click', async e => {
+  const sc = e.target.closest('[data-sug-c]');
+  if (sc) {
+    const [ri, ci] = sc.dataset.sugC.split(':').map(Number), r = ROASTERS[ri], c = r.coffees[ci];
+    $('#bfName').value = c.n; pickRoaster(r);
+    if (!$('#bfOrigin').value.trim() && c.o) $('#bfOrigin').value = c.o;
+    $('#bfSugName').hidden = true; dupHint(); buzz(6); return;
+  }
+  const sr = e.target.closest('[data-sug-r]');
+  if (sr) { pickRoaster(ROASTERS[+sr.dataset.sugR]); suggestNames(); buzz(5); return; }
+  const sbr = e.target.closest('[data-sug-b]');
+  if (sbr) { $('#bfRoaster').value = sbr.dataset.sugB; $('#bfSugRo').hidden = true; buzz(5); return; }
   if (e.target.id === 'bfDelete') {
     const btn = e.target, n = S.brews.filter(c => c.bean_id === bDraft.id).length;
     if (!btn.classList.contains('armed')) {
@@ -909,7 +970,7 @@ $('#bfBody').addEventListener('click', async e => {
   const c = e.target.closest('[data-c]');
   if (c) { bDraft.color = c.dataset.c; $('#bfColors').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === c))); buzz(5); return; }
   const k = e.target.closest('#bfKind [role=radio]');
-  if (k) { bDraft.kind = k.dataset.k; $('#bfKind').querySelectorAll('[role=radio]').forEach(b => b.setAttribute('aria-checked', String(b === k))); $('#bfRoLbl').textContent = bDraft.kind === 'super' ? 'Marke' : 'Rösterei'; buzz(5); return; }
+  if (k) { bDraft.kind = k.dataset.k; $('#bfKind').querySelectorAll('[role=radio]').forEach(b => b.setAttribute('aria-checked', String(b === k))); $('#bfRoLbl').textContent = bDraft.kind === 'super' ? 'Marke' : 'Rösterei'; if (!$('#bfSugRo').hidden) suggestRoasters(); suggestNames(); buzz(5); return; }
   const w = e.target.closest('[data-w]');
   if (w) { $('#bfWeight').value = w.dataset.w; $('#bfSizes').querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === w))); ppk(); buzz(4); }
 });

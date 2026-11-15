@@ -586,6 +586,23 @@ body.locked { overflow: hidden; }
 .steps span { grid-column: 2; color: var(--ink-2); font-size: 14px; }
 .hint .txt { padding: 0; font-size: inherit; }
 
+/* Vorschläge beim Anlegen einer Packung */
+.sugg { margin-top: -6px; padding: 6px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); animation: rise .25s var(--ease); }
+.sugg[hidden] { display: none; }
+.sugg-h { margin: 6px 8px 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sugg-i { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border-radius: 12px; text-align: left; transition: background .15s; }
+.sugg-i:active { background: var(--sunk); }
+.sugg-ic { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font: 400 17px/1 var(--f-serif);
+  background: hsl(var(--h) 28% 86%); color: hsl(var(--h) 35% 28%); }
+.sugg-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sugg-t b { font-weight: 600; font-size: 15px; }
+.sugg-t small { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sugg-i em { flex: none; font-style: normal; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 999px; }
+.sugg-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px 6px; }
+.sugg-chips .chip { min-height: 36px; font-size: 14px; }
+.sugg-chips .chip small { margin-left: 6px; font-size: 11px; color: var(--muted); }
+@media (prefers-color-scheme: dark) { .sugg-ic { background: hsl(var(--h) 18% 26%); color: hsl(var(--h) 40% 82%); } }
+
 .members { display: flex; flex-direction: column; }
 .member { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
 .member:first-child { border-top: 0; }
