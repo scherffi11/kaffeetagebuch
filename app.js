@@ -1,4 +1,4 @@
-// Kaffee mit Freunden (Version 2.5): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.6): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
 import { ROASTERS, BRANDS } from './catalog.js';
@@ -423,7 +423,7 @@ function renderBeanPanel(id) {
     <div class="person">
       <div class="p-head">${avatar(p.u, 32)}<b>${p.u === S.uid ? 'Du' : esc(person(p.u).name)}</b>
         <span class="avg">${p.avg ? starsHTML(p.avg, 13) + `<span class="num">${de(p.avg)}</span>` : 'ohne Sterne'}</span></div>
-      ${p.list.map(c => `<button class="brow" data-act="brew" data-id="${c.id}"><span class="m">${esc(c.method_name || TYPES[c.method_type])}</span><span class="r">${dShort(c.brewed_at)} · ${brewLine(c)}</span>${c.stars ? starsHTML(c.stars, 13) : ''}</button>`).join('')}
+      ${p.list.map(c => `<button class="brow" data-act="brew" data-id="${c.id}"><span class="m">${esc(c.method_name || TYPES[c.method_type])}</span><span class="r">${dShort(c.brewed_at)} · ${brewLine(c)}</span>${c.stars ? starsHTML(c.stars, 13) : ''}${c.note ? `<span class="memo-s">${esc(c.note)}</span>` : ''}</button>`).join('')}
     </div>`).join('');
   $('#beanPanel').innerHTML = `
     <div class="p-bar"><button class="back" data-act="close">${ICON.back}Bohnen</button>${own ? `<button class="txt strong" data-act="edit-bean" data-id="${b.id}">Bearbeiten</button>` : '<span></span>'}</div>
@@ -479,6 +479,7 @@ function renderBrewPanel(id) {
       <div class="byline">${avatar(c.user_id, 26)}<span>${own ? 'Deine Bewertung' : esc(person(c.user_id).name)} · ${dLong(c.brewed_at)}, ${hhmm(c.brewed_at)}</span></div>
       <h1 class="d-title">${esc(c.method_name || TYPES[c.method_type])}</h1>
       <div class="score">${c.stars ? `<span class="big">${deStars(c.stars)}</span><div>${starsHTML(c.stars)}<p class="sw-word">${starWord(c.stars)}</p></div>` : '<div><b style="font-weight:500">Ohne Sterne</b></div>'}</div>
+      ${c.note ? `<blockquote class="memo">${esc(c.note)}</blockquote>` : ''}
       ${tastes.length ? `<section class="sec"><h3>Geschmack</h3><div class="taste-out">${tastes.map(t => `<div class="to" style="--c:${t.c}">${levelIcon(levelOf(c[t.k]))}<b>${tasteWord(c[t.k])}</b><span>${t.l}</span></div>`).join('')}</div></section>` : ''}
       ${c.has_recipe ? `<section class="sec"><h3>Rezept</h3><div class="recipe">${rec}</div>${extra}</section>` : ''}
       <div class="acts">${c.has_recipe ? `<button class="btn ${own ? 'primary' : 'accent'}" data-act="again" data-id="${c.id}">${own ? 'Nochmal machen' : 'Rezept übernehmen'}</button>` : `<button class="btn primary" data-act="rate" data-id="${c.bean_id}">Selbst bewerten</button>`}</div>
@@ -594,7 +595,7 @@ function openBrewForm(opt = {}) {
     const lastB = mine.find(c => c.bean_id === beanId && methodFor(c));
     const m = (src && methodFor(src)) || (lastB && methodFor(lastB)) || (mine[0] && methodFor(mine[0])) || myMethods()[0];
     const p = prefill(m, src && src.has_recipe ? src : null, beanId);
-    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: mine.length ? !!mine[0].has_recipe : false, stars: 0, acid: null, sweet: null, bitter: null, ...p.vals };
+    draft = { id: null, bean_id: beanId, _mid: m.id, method_type: m.type, method_name: m.name, has_recipe: mine.length ? !!mine[0].has_recipe : false, stars: 0, acid: null, sweet: null, bitter: null, note: '', ...p.vals };
     draft._note = src ? (src.user_id === S.uid ? `Vorlage vom ${dShort(src.brewed_at)}` : `Rezept von <b>${esc(person(src.user_id).name)}</b> übernommen`) : noteFor(p);
     if (src) draft.has_recipe = true;
   }
@@ -639,6 +640,8 @@ function renderBrewForm(isEdit) {
         ${TASTE.map(t => `<div class="tq" style="--c:${t.c}"><span class="tq-n"><i></i>${t.l}</span>
           <div class="tseg" role="radiogroup" aria-label="${t.l}">${LEVELS.map((L, n) => `<button type="button" role="radio" data-taste="${t.k}" data-v="${L.v}" aria-checked="${levelOf(draft[t.k]) === n}">${levelIcon(n)}<span>${L.l}</span></button>`).join('')}</div></div>`).join('')}
       </div>
+      <label class="memo-in"><span class="f-lbl"><span class="label">Notiz</span><span class="opt" id="fMemoCnt">freiwillig</span></span>
+        <textarea id="fMemo" rows="2" maxlength="280" placeholder="Was ist dir aufgefallen? Zum Beispiel: schmeckt nach Kakao und Haselnuss">${esc(draft.note || '')}</textarea></label>
     </div>
     <div class="f-sec"><div class="f-lbl"><span class="label">Zubereitung</span></div>
       <div class="chips" id="fMethods">${unknown ? `<button type="button" class="chip" aria-pressed="true">${ICON[draft.method_type]}${esc(draft.method_name)}</button>` : ''}${ms.map(m => `<button type="button" class="chip" data-m="${m.id}" aria-pressed="${m.id === draft._mid}">${ICON[m.type]}${esc(m.name)}</button>`).join('')}</div>
@@ -787,6 +790,7 @@ brBody.addEventListener('click', e => {
 brBody.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.k) { setV(t.dataset.k, parseNum(t.value)); totals(); }
+  if (t.id === 'fMemo') { draft.note = t.value; const n = t.value.length; $('#fMemoCnt').textContent = n > 200 ? `${n} von 280` : 'freiwillig'; }
 });
 brBody.addEventListener('change', e => {
   if (e.target.id === 'fRecipe') {
@@ -808,7 +812,7 @@ $('#brSave').onclick = async () => {
   const t = draft.method_type, r = draft.has_recipe;
   const row = {
     bean_id: draft.bean_id, method_type: t, method_name: draft.method_name, has_recipe: r,
-    stars: draft.stars || null, acid: draft.acid, sweet: draft.sweet, bitter: draft.bitter,
+    stars: draft.stars || null, acid: draft.acid, sweet: draft.sweet, bitter: draft.bitter, note: (draft.note || '').trim() || null,
     dose: r ? draft.dose : null, grind: r ? draft.grind : null,
     pours: r && t === 'filter' ? draft.pours : null, brew_time: r && t === 'filter' ? draft.brew_time : null,
     yield: r && (t === 'espresso' || t === 'milk') ? draft.yield : null, shot: r && (t === 'espresso' || t === 'milk') ? draft.shot : null,
