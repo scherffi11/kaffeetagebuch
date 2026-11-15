@@ -1146,69 +1146,25 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.me && Date.now() - S.loadedAt > 20000) refresh();
 });
 
-/* ================= Startbild: die Mühle ================= */
+/* ================= Startbild: Freunde am Tisch ================= */
 let bootDone;
 const ready = new Promise(r => { bootDone = r; });
 function runSplash(ready) {
-  const sp = $('#splash'), q = id => sp.querySelector('#' + id);
-  const arm = q('arm'), knob = q('knob'), crank = q('crank'), cBack = q('crankBack'), cFront = q('crankFront');
-  const body = q('mBody'), beansG = q('mBeans'), dTop = q('dTop'), dSide = q('dSide'), dFront = q('dFront'), crumbs = q('dCrumbs'), aroma = q('aroma');
-  // Bohnen im Trichter, die beim Mahlen kreisen und weniger werden
-  const BE = Array.from({ length: 13 }, (_, i) => ({ a: i * 2.4, r: 6 + (i * 37) % 29, rot: (i * 47) % 180 }));
-  beansG.innerHTML = BE.map(() => '<ellipse rx="4.2" ry="2.7"/>').join('');
-  const beanEls = [...beansG.children];
-  crumbs.innerHTML = Array.from({ length: 28 }, (_, i) => `<circle r="${(.6 + (i % 3) * .35).toFixed(2)}"/>`).join('');
-  const crumbEls = [...crumbs.children].map((el, i) => ({ el, u: ((i * 53) % 97) / 97, v: ((i * 31) % 89) / 89 }));
-  let behind = null;
-  const setCrank = a => {
-    const x = 122 + 50 * Math.cos(a), y = 86 + 11 * Math.sin(a);
-    arm.setAttribute('d', `M122 86Q${(122 + 28 * Math.cos(a)).toFixed(1)} ${(79 + 6 * Math.sin(a)).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`);
-    knob.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(.9 + .05 * (Math.sin(a) + 1)).toFixed(3)})`);
-    const b = Math.sin(a) < 0;   // Griff hinter der Achse, wenn er von uns weg zeigt
-    if (b !== behind) { behind = b; (b ? cBack : cFront).appendChild(crank); }
-  };
-  const setBeans = (a, p) => beanEls.forEach((el, i) => {
-    const B = BE[i], t = B.a + a * .35;
-    el.setAttribute('transform', `translate(${(122 + B.r * Math.cos(t)).toFixed(1)} ${(112 + B.r * .19 * Math.sin(t) + p * 3).toFixed(1)}) rotate(${(B.rot + a * 20).toFixed(0)})`);
-    el.setAttribute('opacity', clamp(1.3 - p * 1.5 + (i % 4) * .08 - (i / BE.length) * p, 0, 1).toFixed(2));
-  });
-  const setDrawer = o => {
-    const dx = -26 * o, dy = 17.5 * o;
-    dFront.setAttribute('transform', `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`);
-    dTop.setAttribute('d', `M${64 + dx} ${214 + dy}H${156 + dx}L156 214H64Z`);
-    dSide.setAttribute('d', `M${156 + dx} ${214 + dy}L156 214V256L${156 + dx} ${256 + dy}Z`);
-    crumbEls.forEach(c => { c.el.setAttribute('cx', (64 + c.u * 92 + dx * c.v).toFixed(1)); c.el.setAttribute('cy', (214 + dy * c.v).toFixed(1)); });
-  };
-  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const outBack = t => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
-  let loaded = false, skip = false, done = false, t0 = 0, lastRot = 0;
+  // Die Szene läuft per CSS: Lampe, Tisch, drei Freunde, Kuchen, Anstoßen. Hier nur Takt und Ende.
+  const sp = $('#splash');
+  let loaded = false, done = false;
+  const t0 = performance.now(), END = REDUCED ? 400 : 2900;
   ready.then(() => { loaded = true; });
-  sp.addEventListener('click', () => { skip = true; });
   const finish = () => {
     if (done) return; done = true;
     sp.classList.add('out'); $('#app').classList.remove('pre');
     setTimeout(() => sp.remove(), 1000);
   };
-  // Sicherheitsnetz, falls der Browser die Animation anhält
+  sp.addEventListener('click', () => ready.then(finish));
+  if (!REDUCED) { setTimeout(() => buzz(8), 1100); setTimeout(() => buzz([10, 40, 10]), 2100); }
+  const tick = () => { if (done) return; if (loaded && performance.now() - t0 >= END) finish(); else setTimeout(tick, 100); };
+  tick();
   setTimeout(() => ready.then(finish), 6000);
-  setCrank(Math.PI / 2); setBeans(0, 0); setDrawer(0);
-  if (REDUCED) { setDrawer(1); ready.then(() => setTimeout(finish, 400)); return; }
-  const C0 = 300, C1 = 2000, D0 = 2050, D1 = 2650, END = 2950;
-  const frame = now => {
-    if (!t0) t0 = now;
-    let t = now - t0;
-    if (skip && t < END) { t0 -= END - t; t = END; }
-    const pc = clamp((t - C0) / (C1 - C0), 0, 1), turn = ease(pc) * Math.PI * 5, a = Math.PI / 2 + turn;
-    setCrank(a); setBeans(turn, pc);
-    const shake = Math.sin(pc * Math.PI);   // die Mühle ruckelt, solange schnell gekurbelt wird
-    body.setAttribute('transform', `translate(${(Math.sin(t * .11) * .7 * shake).toFixed(2)} ${(Math.cos(t * .17) * .5 * shake).toFixed(2)})`);
-    const rot = Math.floor(turn / Math.PI); if (rot !== lastRot) { lastRot = rot; buzz(3); }
-    const pd = clamp((t - D0) / (D1 - D0), 0, 1); setDrawer(pd ? outBack(pd) : 0);
-    if (pd > .35 && !aroma.classList.contains('on')) { aroma.classList.add('on'); buzz(12); }
-    if (t >= END && loaded) { finish(); return; }
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
 }
 runSplash(ready);
 

@@ -484,14 +484,43 @@ input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-/* Startbild: Handmühle mahlt, Schublade geht auf, App kommt */
+/* Startbild: Freunde am Tisch mit Kaffee und Kuchen, stoßen an, App kommt */
 .splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden;
   background: radial-gradient(110% 70% at 50% 42%, #3A4733 0%, #222B20 55%, #161C15 100%); transition: opacity .65s ease .1s, visibility 0s .8s; cursor: pointer; }
 .splash.out { opacity: 0; visibility: hidden; pointer-events: none; }
-.mill { width: min(70vw, 290px); height: auto; overflow: visible; transform-origin: 50% 78%; animation: millIn .8s var(--ease) both; transition: transform .8s cubic-bezier(.55, 0, .25, 1); }
-.splash.out .mill { transform: scale(1.5) translateY(-6%); }
-@keyframes millIn { from { opacity: 0; transform: translateY(18px) scale(.94); } }
-.splash-t { margin: 0; font: 400 30px/1.2 var(--f-serif); color: #E6E1D1; letter-spacing: -.01em; animation: rise .9s .3s var(--ease) both; transition: opacity .3s; }
+.scene { width: min(88vw, 380px); height: auto; overflow: visible; transform-origin: 50% 60%; transition: transform .8s cubic-bezier(.55, 0, .25, 1); }
+.splash.out .scene { transform: scale(1.35) translateY(-4%); }
+.scene * { transform-box: view-box; }
+.scene .glow { opacity: 0; animation: glowIn .9s .35s ease-out forwards; }
+.scene .lamp { animation: lampIn .8s var(--spring) both, swing 4.5s .8s ease-in-out infinite; }
+.scene .table { animation: tableIn .6s .1s var(--ease) both; }
+.scene .fr { animation: friendUp .75s var(--spring) both; }
+.scene .f1 { animation-delay: .45s; } .scene .f2 { animation-delay: .62s; } .scene .f3 { animation-delay: .79s; }
+.scene .hd { animation: bob 2.6s 1.5s ease-in-out infinite; }
+.scene .f2 .hd { animation-delay: 1.8s; animation-duration: 2.2s; } .scene .f3 .hd { animation-delay: 2.1s; animation-duration: 3s; }
+.scene .plates { animation: fadeUp .45s 1s var(--ease) both; }
+.scene .cake { animation: cakeDrop .65s 1.05s cubic-bezier(.3, 1.45, .6, 1) both; }
+.scene .arm { animation: fadeUp .4s .95s var(--ease) both, cheerL .7s 1.75s var(--spring) forwards; }
+.scene .aR { animation-name: fadeUp, cheerR; }
+.scene .cL { animation: cheerR .7s 1.75s var(--spring) forwards; }
+.scene .cR { animation: cheerL .7s 1.75s var(--spring) forwards; }
+.scene .spk { transform-box: fill-box; transform-origin: center; opacity: 0; animation: sparkle .7s 2.1s ease-out both; }
+.scene .spk.s2 { animation-delay: 2.15s; } .scene .spk.s3 { animation-delay: 2.25s; } .scene .spk.s4 { animation-delay: 2.3s; }
+.scene .heart { transform-box: fill-box; transform-origin: center; opacity: 0; animation: heartUp 1.3s 2.25s ease-out both; }
+@keyframes glowIn { to { opacity: 1; } }
+@keyframes lampIn { from { transform: translateY(-70px); } }
+@keyframes swing { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(2deg); } 75% { transform: rotate(-2deg); } }
+@keyframes tableIn { from { opacity: 0; transform: translateY(16px); } }
+@keyframes friendUp { from { transform: translateY(70px); } }
+@keyframes bob { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(4deg); } 65% { transform: rotate(-3deg); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } }
+@keyframes cakeDrop { from { opacity: 0; transform: translateY(-90px); } 40% { opacity: 1; } }
+@keyframes cheerL { to { transform: rotate(-100deg); } }
+@keyframes cheerR { to { transform: rotate(100deg); } }
+@keyframes sparkle { 0% { opacity: 0; transform: scale(.2) rotate(0); } 40% { opacity: 1; transform: scale(1.15) rotate(20deg); } 100% { opacity: 0; transform: scale(.9) rotate(45deg); } }
+@keyframes heartUp { 0% { opacity: 0; transform: translateY(8px) scale(.4); } 30% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .scene *, .scene { animation: none !important; } .scene .glow, .scene .spk { opacity: 1; } .scene .heart { opacity: 0; } }
+.splash-t { margin: 0; font: 400 30px/1.2 var(--f-serif); color: #E6E1D1; letter-spacing: -.01em; animation: rise .9s .5s var(--ease) both; transition: opacity .3s; }
 .splash.out .splash-t { opacity: 0; }
 .leaf { position: absolute; width: 46vw; max-width: 230px; fill: #4E6A32; opacity: .2; transform-origin: 50% 100%; }
 .leaf .rib { fill: none; stroke: #222B20; stroke-width: 2.5; }
@@ -501,10 +530,6 @@ input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 
 @keyframes sway1 { 50% { transform: rotate(33deg); } }
 @keyframes sway2 { 50% { transform: rotate(199deg); } }
 @keyframes sway3 { 50% { transform: rotate(-19deg); } }
-#aroma path { stroke-dasharray: 30; stroke-dashoffset: 30; opacity: 0; }
-#aroma.on path { animation: aroma 1.4s ease-out forwards; }
-#aroma.on path:nth-child(2) { animation-delay: .18s; } #aroma.on path:nth-child(3) { animation-delay: .34s; }
-@keyframes aroma { 0% { stroke-dashoffset: 30; opacity: 0; transform: translateY(4px); } 30% { opacity: .85; } 100% { stroke-dashoffset: 0; opacity: 0; transform: translateY(-14px); } }
 .steam path { animation: steam 3.2s ease-in-out infinite; opacity: 0; }
 .steam path:nth-child(2) { animation-delay: 1.05s; } .steam path:nth-child(3) { animation-delay: 2.1s; }
 @keyframes steam { 0% { opacity: 0; transform: translateY(5px); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-9px); } }
