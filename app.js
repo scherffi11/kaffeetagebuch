@@ -1,4 +1,4 @@
-// Kaffee mit Freunden (Version 2.6): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.7): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
 import { ROASTERS, BRANDS } from './catalog.js';
@@ -122,7 +122,7 @@ function beanAgg(b) {
   const ratedP = persons.filter(p => p.avg > 0);
   // Mittel über die Personen, damit eine fleißige Person die Wertung nicht allein bestimmt
   const avg = ratedP.length ? ratedP.reduce((a, p) => a + p.avg, 0) / ratedP.length : 0;
-  return { bs, persons, ratedP, avg, mine: per[S.uid] || [], per100: b.price && b.weight ? b.price / b.weight * 100 : 0 };
+  return { bs, persons, ratedP, avg, mine: per[S.uid] || [], perKg: b.price && b.weight ? b.price / b.weight * 1000 : 0 };
 }
 const waterOf = c => (c.pours || []).reduce((a, p) => a + (+p.g || 0), 0);
 const ratioTxt = (dose, water) => dose && water ? '1:' + de(water / dose) : '–';
@@ -362,7 +362,7 @@ function renderGallery() {
   const q = norm(S.q);
   if (q) list = list.filter(x => norm([x.b.name, x.b.roaster, x.b.place, x.b.origin].join(' ')).includes(q));
   if (S.gSort === 'rating') list.sort((x, y) => y.a.avg - x.a.avg);
-  if (S.gSort === 'price') list.sort((x, y) => (x.a.per100 || 1e9) - (y.a.per100 || 1e9));
+  if (S.gSort === 'price') list.sort((x, y) => (x.a.perKg || 1e9) - (y.a.perKg || 1e9));
   if (!S.beans.length) {
     $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>Noch keine Packung</h2><p>Fotografier deine erste Bohnenpackung. Danach können alle sie bewerten.</p><button class="btn primary" data-act="new-bean">Erste Packung anlegen</button></div>`;
     return;
@@ -376,7 +376,7 @@ function renderGallery() {
         <span class="t-name">${esc(b.name)}</span>
         <span class="t-sub">${esc(b.roaster || b.place || '')}</span>
         <span class="t-rate">${a.avg ? `${starsHTML(a.avg, 13)}<span class="num">${de(a.avg)}</span><span class="cnt">(${a.bs.length})</span>` : '<span class="cnt">Noch keine Bewertung</span>'}</span>
-        <span class="t-price">${b.price ? `<b>${eur(b.price)}</b>` : '<b>–</b>'}${a.per100 ? `<small>${eur(a.per100)}/100 g</small>` : b.weight ? `<small>${b.weight} g</small>` : ''}</span>
+        <span class="t-price">${b.price ? `<b>${eur(b.price)}</b>` : '<b>–</b>'}${a.perKg ? `<small>${eur(a.perKg)}/kg</small>` : b.weight ? `<small>${b.weight} g</small>` : ''}</span>
       </span>
     </button>`).join('');
 }
@@ -432,7 +432,7 @@ function renderBeanPanel(id) {
       <p class="kicker">${b.kind === 'super' ? 'Supermarkt' : 'Rösterei'}${b.roaster ? ' · ' + esc(b.roaster) : ''}</p>
       <h1 class="d-title">${esc(b.name)}</h1>
       ${b.origin ? `<p class="d-sub">${esc(b.origin)}</p>` : ''}
-      ${b.price ? `<p class="d-price"><b>${eur(b.price)}</b><span>${b.weight ? (b.weight >= 1000 ? de(b.weight / 1000, b.weight % 1000 ? 1 : 0) + ' kg' : b.weight + ' g') : ''}${a.per100 ? ' · ' + eur(a.per100) + ' je 100 g' : ''}${b.place ? ' · bei ' + esc(b.place) : ''}</span></p>` : ''}
+      ${b.price ? `<p class="d-price"><b>${eur(b.price)}</b><span>${b.weight ? (b.weight >= 1000 ? de(b.weight / 1000, b.weight % 1000 ? 1 : 0) + ' kg' : b.weight + ' g') : ''}${a.perKg ? ' · ' + eur(a.perKg) + ' je kg' : ''}${b.place ? ' · bei ' + esc(b.place) : ''}</span></p>` : ''}
       <div class="score">
         ${a.avg ? `<span class="big">${de(a.avg)}</span><div>${starsHTML(a.avg)}<p>${a.bs.length} ${a.bs.length === 1 ? 'Bewertung' : 'Bewertungen'} von ${a.ratedP.length} ${a.ratedP.length === 1 ? 'Person' : 'Personen'}</p></div>`
         : `<div><b style="font-weight:500">Noch nicht bewertet</b><p>Sei die erste Person, die diese Bohne probiert.</p></div>`}
@@ -441,7 +441,7 @@ function renderBeanPanel(id) {
       ${bestRows ? `<section class="sec"><h3>Deine besten Einstellungen</h3>${bestRows}</section>` : ''}
       <section class="sec"><h3>Einkauf</h3><dl class="facts">
         <div><dt>Gekauft bei</dt><dd>${esc(b.place) || '–'}</dd></div>
-        <div><dt>Preis</dt><dd class="num">${b.price ? eur(b.price) : '–'}${b.weight ? `<small>für ${b.weight >= 1000 ? de(b.weight / 1000, b.weight % 1000 ? 1 : 0) + ' kg' : b.weight + ' g'}${a.per100 ? ' · ' + eur(a.per100) + ' je 100 g' : ''}</small>` : ''}</dd></div>
+        <div><dt>Preis</dt><dd class="num">${b.price ? eur(b.price) : '–'}${b.weight ? `<small>für ${b.weight >= 1000 ? de(b.weight / 1000, b.weight % 1000 ? 1 : 0) + ' kg' : b.weight + ' g'}${a.perKg ? ' · ' + eur(a.perKg) + ' je kg' : ''}</small>` : ''}</dd></div>
         <div><dt>Röstdatum</dt><dd>${b.roast ? dFull(b.roast) + `<small class="${days > 35 ? 'old' : ''}">vor ${days} ${days === 1 ? 'Tag' : 'Tagen'}</small>` : '–'}</dd></div>
         <div><dt>Eingetragen von</dt><dd>${b.created_by === S.uid ? 'dir' : esc(person(b.created_by).name)}${b.bought ? `<small>gekauft am ${dFull(b.bought)}</small>` : ''}</dd></div>
       </dl></section>
@@ -926,7 +926,7 @@ function dupHint() {
 }
 function ppk() {
   const p = parseNum($('#bfPrice').value), w = parseNum($('#bfWeight').value);
-  $('#bfPpk').innerHTML = p && w ? `Das sind <b>${eur(p / w * 100)}</b> je 100 g.` : '';
+  $('#bfPpk').innerHTML = p && w ? `Das sind <b>${eur(p / w * 1000)}</b> je kg.` : '';
 }
 // Antippen eines Vorschlags soll das Feld nicht verlassen
 $('#bfBody').addEventListener('mousedown', e => { if (e.target.closest('.sugg')) e.preventDefault(); });
