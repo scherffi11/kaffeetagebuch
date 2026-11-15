@@ -30,6 +30,12 @@ export const ROASTERS = [
     { n: 'unión progreso', t: 'fe' }
   ] },
   // Online
+  { name: 'Bohnendealer', city: 'Online-Shop', place: 'Online, bohnendealer.coffee', coffees: [
+    { n: 'Monsooned Malabar', t: 'e', o: 'Indien' }, { n: 'India Espresso', t: 'e', o: 'Indien' }, { n: 'Paris Espresso', t: 'e' }, { n: 'Siena Espresso', t: 'e' },
+    { n: 'Vienna Crema', t: 'e' }, { n: 'Amicizia Espresso', t: 'e' }, { n: 'Amadeus 4', t: 'e' }, { n: 'Light of Africa', t: 'e' },
+    { n: 'Indianapoli', t: 'e' }, { n: 'Calmio Decaf', t: 'e', o: 'entkoffeiniert' }, { n: 'Samba!' }, { n: 'Münchendorf' },
+    { n: 'Lima Specialty', o: 'Peru' }, { n: 'Happy Accident', o: 'Röstunfall, aber lecker' }, { n: 'Admira Wacker Fankaffee' }
+  ] },
   { name: 'Kaffeemacher', city: 'Basel', place: 'Online, kaffeemacher.ch', coffees: [
     { n: 'Compadre', t: 'e', o: 'italienischer Espresso' }, { n: 'Mano', t: 'e', o: 'Espresso Blend' }, { n: 'Dreispitz', t: 'e', o: 'Espresso Blend' },
     { n: 'El Botón', t: 'e', o: 'für den Vollautomaten' }, { n: 'Amigo', t: 'f', o: 'Filterkaffee' }, { n: 'Apas', t: 'e', o: 'Brasilien' },
