@@ -1,4 +1,4 @@
-// Kaffee mit Freunden (Version 2.7): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
+// Kaffee mit Freunden (Version 2.8): gemeinsame Bohnen, Bewertungen je Person, Login per E-Mail-Code über Supabase.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, VERSION } from './config.js';
 import { ROASTERS, BRANDS } from './catalog.js';
@@ -213,7 +213,7 @@ const gateMsg = m => { $('#gateMsg').textContent = m || ''; };
 function showGate(step) {
   bootDone();
   $('#app').hidden = true; $('#gate').hidden = false;
-  ['fEmail', 'fCode', 'fName'].forEach(id => { $('#' + id).hidden = id !== step; });
+  ['fEmail', 'fCode', 'fName', 'fRetry'].forEach(id => { $('#' + id).hidden = id !== step; });
   gateMsg('');
   setTimeout(() => { const i = $('#' + step + ' input'); i && i.focus(); }, 60);
 }
@@ -239,8 +239,9 @@ $('#fCode').addEventListener('submit', async e => {
   const btn = e.submitter || $('#fCode button[type=submit]'); btn.disabled = true;
   const { error } = await sb.auth.verifyOtp({ email: S.email, token, type: 'email' });
   btn.disabled = false;
-  if (error) gateMsg('Der Code passt nicht oder ist abgelaufen.');
+  if (error) gateMsg('Der Code passt nicht oder ist abgelaufen. Es gilt nur der Code aus der neuesten Mail.');
 });
+$('#fRetry').addEventListener('submit', e => { e.preventDefault(); retryEnter(); });
 $('#inCode').addEventListener('input', e => { const v = e.target.value.replace(/\D/g, ''); e.target.value = v; if (v.length === 6 && !e.target.dataset.sent) { e.target.dataset.sent = 1; $('#fCode').requestSubmit(); setTimeout(() => delete e.target.dataset.sent, 1500); } });
 $('#otherMail').onclick = () => showGate('fEmail');
 let resendT = 0;
@@ -282,9 +283,17 @@ async function enter() {
     if (!settings().welcomed) setTimeout(showWelcome, 900);
   } catch (e) {
     bootDone();
-    showGate('fEmail'); gateMsg('Verbindung zur Datenbank fehlgeschlagen. Bitte neu laden.');
+    // Sitzung bleibt gültig: kein Rückfall auf die E-Mail-Maske, nur ein neuer Versuch
+    showGate('fRetry');
   } finally { entering = false; }
 }
+async function retryEnter() {
+  if (entering || !$('#app').hidden || $('#fRetry').hidden) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { S.uid = session.user.id; enter(); } else showGate('fEmail');
+}
+addEventListener('online', retryEnter);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retryEnter(); });
 
 /* ================= Ansichten ================= */
 function showView(id) {
@@ -1119,7 +1128,7 @@ $('#meBody').addEventListener('click', async e => {
     const inp = document.querySelector(`.m-row[data-id="${m.id}"] [data-mname]`); inp.focus(); inp.select();
     return;
   }
-  if (e.target.id === 'logout') { await sb.auth.signOut(); location.reload(); }
+  if (e.target.id === 'logout') { manualLogout = true; forgetBackup(); await sb.auth.signOut(); location.reload(); }
 });
 
 async function importBackup(input) {
@@ -1233,17 +1242,44 @@ function runSplash(ready) {
 }
 runSplash(ready);
 
+/* ================= Angemeldet bleiben ================= */
+// supabase-js wirft die Sitzung weg, wenn eine Token-Erneuerung mit einem Serverfehler scheitert
+// (kommt vor, etwa wenn das iPhone die App aus dem Hintergrund holt). Deshalb liegt das Erneuerungs-Token
+// zusätzlich in einer Sicherung, und bei einer ungewollten Abmeldung gibt es genau einen zweiten Versuch.
+const BACKUP_KEY = 'kt.session';
+let manualLogout = false, rescuing = false;
+function keepBackup(s) { try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ access_token: s.access_token, refresh_token: s.refresh_token })); } catch (e) {} }
+function forgetBackup() { try { localStorage.removeItem(BACKUP_KEY); } catch (e) {} }
+async function onSignedOut() {
+  S.me = null;
+  let b = null; try { b = JSON.parse(localStorage.getItem(BACKUP_KEY) || 'null'); } catch (e) {}
+  if (!manualLogout && !rescuing && b && b.refresh_token) {
+    rescuing = true;
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await sb.auth.setSession(b);
+      if (data && data.session) { rescuing = false; return; }
+      // nur bei Netz- oder Serverproblemen nochmal, ein ungültiges Token bleibt ungültig
+      if (error && error.status && error.status < 500) break;
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+    }
+    rescuing = false;
+    forgetBackup();
+  }
+  showGate('fEmail');
+}
+
 /* ================= Start ================= */
 (async () => {
   try { S.email = localStorage.getItem('kt.email') || ''; } catch (e) {}
   if (S.email) { $('#inEmail').value = S.email; $('#sentTo').textContent = S.email; }
   const { data: { session } } = await sb.auth.getSession();
   sb.auth.onAuthStateChange((ev, s) => {
+    if (s) keepBackup(s);
     if (s && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && !S.me) {
       S.uid = s.user.id; S.email = s.user.email || S.email;
       setTimeout(enter, 0);
     }
-    if (ev === 'SIGNED_OUT') { S.me = null; showGate('fEmail'); }
+    if (ev === 'SIGNED_OUT') setTimeout(onSignedOut, 0);
   });
   if (!session) showGate('fEmail');
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

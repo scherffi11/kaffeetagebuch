@@ -46,7 +46,7 @@
       <p class="sent">Code geschickt an <b id="sentTo"></b></p>
       <label class="field"><span>Code aus der Mail</span><input id="inCode" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="······" required></label>
       <button class="btn primary" type="submit">Anmelden</button>
-      <p class="fine">Nichts angekommen? Schau im Spam-Ordner nach. Der Code gilt eine Stunde.</p>
+      <p class="fine">Tipp den Code hier ein, nicht den Link in der Mail. Der Link öffnet den Browser, und dann bleibt die App auf dem Homescreen abgemeldet. Es gilt immer nur der Code aus der neuesten Mail. Nichts angekommen? Schau im Spam-Ordner nach.</p>
       <div class="gate-links"><button class="txt" type="button" id="resend">Code nochmal schicken</button><button class="txt" type="button" id="otherMail">Andere E-Mail</button></div>
     </form>
 
@@ -54,6 +54,11 @@
       <p class="sent">Wie sollen dich die anderen sehen?</p>
       <label class="field"><span>Dein Name</span><input id="inName" autocomplete="given-name" maxlength="40" placeholder="zum Beispiel Niklas" required></label>
       <button class="btn primary" type="submit">Los geht’s</button>
+    </form>
+    <form id="fRetry" class="gate-form" novalidate hidden>
+      <p class="sent">Du bist angemeldet, aber die Verbindung klappt gerade nicht.</p>
+      <button class="btn primary" type="submit">Nochmal versuchen</button>
+      <p class="fine">Die App versucht es von selbst wieder, sobald das Netz da ist.</p>
     </form>
     <p class="gate-msg" id="gateMsg" role="status" aria-live="polite"></p>
   </div>
